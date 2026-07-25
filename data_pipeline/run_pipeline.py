@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -13,12 +15,33 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data_pipeline" / "data" / "raw"
 REGISTRY_PATH = ROOT / "data_pipeline" / "config" / "source_registry.json"
 OUTPUT = ROOT / "app" / "data" / "dashboard.json"
-AS_OF = date(2026, 7, 25)
 
 
 def read_csv(filename: str) -> list[dict[str, str]]:
     with (RAW / filename).open(encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def resolve_as_of() -> date:
+    configured = os.environ.get("REVENUE_AS_OF")
+    if configured:
+        try:
+            return date.fromisoformat(configured)
+        except ValueError as exc:
+            raise SystemExit("REVENUE_AS_OF 必须使用 YYYY-MM-DD 格式。") from exc
+
+    available_dates = [
+        row["date"]
+        for filename in (
+            "revenue_transactions.csv",
+            "billing_confirmations_daily.csv",
+        )
+        for row in read_csv(filename)
+        if row.get("date")
+    ]
+    if not available_dates:
+        raise SystemExit("无法从收入流水或财务确收数据中识别数据截止日期。")
+    return date.fromisoformat(max(available_dates))
 
 
 def by_key(rows: list[dict[str, str]], key: str) -> dict[str, dict[str, str]]:
@@ -27,6 +50,11 @@ def by_key(rows: list[dict[str, str]], key: str) -> dict[str, dict[str, str]]:
 
 def money(value: float) -> float:
     return round(value / 100_000_000, 2)
+
+
+AS_OF = resolve_as_of()
+AS_OF_LABEL = f"{AS_OF.month} 月 {AS_OF.day} 日"
+PERIOD_LABEL = f"{AS_OF.year} 年 {AS_OF.month} 月"
 
 
 SOURCE_LABELS = {
@@ -178,34 +206,55 @@ for row in read_csv("revenue_transactions.csv"):
 
 current_month = AS_OF.strftime("%Y-%m")
 previous_year_month = f"{AS_OF.year - 1}-{AS_OF.month:02d}"
-current_rows = [r for r in joined if r["date"].startswith(current_month)]
+as_of_iso = AS_OF.isoformat()
+current_rows = [
+    r
+    for r in joined
+    if r["date"].startswith(current_month) and r["date"] <= as_of_iso
+]
 last_year_rows = [r for r in joined if r["date"].startswith(previous_year_month) and int(r["date"][-2:]) <= AS_OF.day]
 
 gross_current = sum(r["gross"] for r in current_rows)
 gross_last_year = sum(r["gross"] for r in last_year_rows)
-confirmed_current = sum(billing[r["date"]] for r in current_rows[::48])
-rebate_current = sum(rebates[r["date"]] for r in current_rows[::48])
-refund_current = sum(refunds[r["date"]] for r in current_rows[::48])
+confirmed_current = sum(
+    amount
+    for day, amount in billing.items()
+    if day.startswith(current_month) and day <= as_of_iso
+)
+rebate_current = sum(
+    amount
+    for day, amount in rebates.items()
+    if day.startswith(current_month) and day <= as_of_iso
+)
+refund_current = sum(
+    amount
+    for day, amount in refunds.items()
+    if day.startswith(current_month) and day <= as_of_iso
+)
 net_current = confirmed_current - rebate_current - refund_current
 target = targets[current_month]
 yoy = (net_current / (gross_last_year * 0.972) - 1) * 100
-month_days = 31
+month_days = monthrange(AS_OF.year, AS_OF.month)[1]
 remaining_days = month_days - AS_OF.day
 recent_dates = [(AS_OF - timedelta(days=i)).isoformat() for i in range(7)]
 recent_daily = [sum(r["gross"] for r in joined if r["date"] == d) * 0.972 for d in recent_dates]
 run_rate = sum(recent_daily) / len(recent_daily)
 month_end_forecast = net_current + run_rate * remaining_days
 budget_attainment = net_current / target * 100
+forecast_gap_pct = (month_end_forecast / target - 1) * 100
+time_progress_pct = AS_OF.day / month_days * 100
 rebate_rate = rebate_current / confirmed_current * 100
 declared_merchant_budget = sum(
     amount
     for (day, _merchant_id), amount in merchant_budgets.items()
-    if day.startswith(current_month)
+    if day.startswith(current_month) and day <= as_of_iso
 )
 merchant_budget_utilization = gross_current / declared_merchant_budget * 100
 
 current_impressions = sum(
-    value for (day, _merchant_id), value in impressions.items() if day.startswith(current_month)
+    value
+    for (day, _merchant_id), value in impressions.items()
+    if day.startswith(current_month) and day <= as_of_iso
 )
 prior_impressions = sum(
     value
@@ -213,7 +262,9 @@ prior_impressions = sum(
     if day.startswith(previous_year_month) and int(day[-2:]) <= AS_OF.day
 )
 current_clicks = sum(
-    value for (day, _merchant_id), value in clicks.items() if day.startswith(current_month)
+    value
+    for (day, _merchant_id), value in clicks.items()
+    if day.startswith(current_month) and day <= as_of_iso
 )
 prior_clicks = sum(
     value
@@ -221,7 +272,9 @@ prior_clicks = sum(
     if day.startswith(previous_year_month) and int(day[-2:]) <= AS_OF.day
 )
 current_conversions = sum(
-    value for (day, _merchant_id), value in conversions.items() if day.startswith(current_month)
+    value
+    for (day, _merchant_id), value in conversions.items()
+    if day.startswith(current_month) and day <= as_of_iso
 )
 prior_conversions = sum(
     value
@@ -363,7 +416,7 @@ for source in registry:
                 else "主数据全量"
             ),
             "issue": (
-                "较 SLA 延迟 26 小时，可能影响转化归因"
+                f"最后更新 {fresh.get('last_updated_at', '未知')}，未满足 {source['sla']}"
                 if fresh.get("status") != "按时"
                 else "无异常"
             ),
@@ -371,36 +424,88 @@ for source in registry:
     )
 
 quality_checks = [
-    {"name": "24 个源文件到齐", "status": "passed" if not missing_files else "failed", "detail": f"{24 - len(missing_files)}/24"},
+    {
+        "name": f"{len(registry)} 个源文件到齐",
+        "status": "passed" if not missing_files else "failed",
+        "detail": f"{len(registry) - len(missing_files)}/{len(registry)}",
+    },
     {"name": "复合主键无重复", "status": "passed" if duplicate_keys == 0 else "failed", "detail": f"{duplicate_keys} 条重复"},
     {"name": "维表关联完整", "status": "passed" if sum(unmatched.values()) == 0 else "failed", "detail": f"{sum(unmatched.values())} 条未匹配"},
     {"name": "经营口径与确收对账", "status": "passed", "detail": f"差异 {abs(net_current - gross_current * 0.972) / net_current * 100:.2f}%"},
-    {"name": "数据更新及时性", "status": "warning", "detail": "23/24 按时"},
+    {
+        "name": "数据更新及时性",
+        "status": "passed" if all(source["status"] == "按时" for source in sources) else "warning",
+        "detail": f"{sum(1 for source in sources if source['status'] == '按时')}/{len(sources)} 按时",
+    },
+]
+
+dimension_names = {
+    "industry": "行业",
+    "product": "广告产品",
+    "traffic": "流量场景",
+}
+all_driver_items = [
+    {**item, "dimension": dimension_names[dimension]}
+    for dimension, items in breakdowns.items()
+    for item in items
+]
+top_positive = max(all_driver_items, key=lambda item: item["change"])
+top_negative = min(all_driver_items, key=lambda item: item["change"])
+warning_sources = [
+    source for source in source_health if source["healthStatus"] != "健康"
 ]
 
 anomalies = [
     {
-        "level": "高",
-        "title": "搜索流量收入连续 4 日低于基线",
-        "impact": "-0.18 亿",
-        "evidence": "7 月 12 日策略调整后，搜索流量变现率下降 8.7%",
-        "status": "待业务确认",
+        "level": "高" if forecast_gap_pct <= -3 else "机会",
+        "title": (
+            "月底预测低于预算"
+            if forecast_gap_pct < 0
+            else "月底预测高于预算"
+        ),
+        "impact": f"{forecast_gap_pct:+.1f}%",
+        "evidence": (
+            f"截至 {AS_OF_LABEL}，月底预测 {money(month_end_forecast):.2f} 亿，"
+            f"月度预算 {money(target):.2f} 亿。"
+        ),
+        "status": "需要行动" if forecast_gap_pct <= -3 else "持续观察",
     },
     {
         "level": "中",
-        "title": "服饰鞋包投放商家数下降",
-        "impact": "-0.11 亿",
-        "evidence": "成长商家预算利用率同比下降 6.2 个百分点",
-        "status": "已定位",
+        "title": f"{top_negative['dimension']}｜{top_negative['name']}形成主要拖累",
+        "impact": f"{top_negative['change']:+.2f} 亿",
+        "evidence": (
+            f"收入同比贡献 {top_negative['change']:+.2f} 亿，"
+            f"变化率 {top_negative['changePct']:+.1f}%。"
+            if top_negative["changePct"] is not None
+            else f"收入同比贡献 {top_negative['change']:+.2f} 亿。"
+        ),
+        "status": "待业务确认",
     },
     {
         "level": "机会",
-        "title": "中小商家激励开始释放增量",
-        "impact": "+0.09 亿",
-        "evidence": "激励上线后日均收入较上线前提升 10.4%",
+        "title": f"{top_positive['dimension']}｜{top_positive['name']}贡献主要增量",
+        "impact": f"{top_positive['change']:+.2f} 亿",
+        "evidence": (
+            f"收入同比贡献 {top_positive['change']:+.2f} 亿，"
+            f"变化率 {top_positive['changePct']:+.1f}%。"
+            if top_positive["changePct"] is not None
+            else f"收入同比贡献 {top_positive['change']:+.2f} 亿。"
+        ),
         "status": "持续观察",
     },
 ]
+
+if warning_sources:
+    anomalies.append(
+        {
+            "level": "中",
+            "title": f"{warning_sources[0]['displayName']}未按时更新",
+            "impact": "数据风险",
+            "evidence": warning_sources[0]["issue"],
+            "status": "待数据负责人处理",
+        }
+    )
 
 metric_catalog = [
     {
@@ -426,7 +531,7 @@ metric_catalog = [
         "owner": "财务 BP",
         "refresh": "每日",
         "sourceIds": ["revenue_transactions", "billing_confirmations_daily", "calendar"],
-        "reconciliation": "比较区间均截至 25 日",
+        "reconciliation": f"本期与去年同期均截至每月 {AS_OF.day} 日",
         "status": "已认证",
     },
     {
@@ -439,7 +544,7 @@ metric_catalog = [
         "owner": "财务 BP",
         "refresh": "每日",
         "sourceIds": ["billing_confirmations_daily", "market_target_monthly"],
-        "reconciliation": "时间进度 80.6%",
+        "reconciliation": f"自然日时间进度 {time_progress_pct:.1f}%",
         "status": "已认证",
     },
     {
@@ -452,13 +557,13 @@ metric_catalog = [
         "owner": "财务 BP",
         "refresh": "每日",
         "sourceIds": ["billing_confirmations_daily", "forecast_baseline_daily", "strategy_events"],
-        "reconciliation": "置信区间 ±0.08 亿",
+        "reconciliation": f"基于截至 {AS_OF_LABEL}的近 7 日运行速度",
         "status": "模型指标",
     },
     {
         "id": "forecast_gap",
         "name": "预测较预算差异",
-        "value": f"{(month_end_forecast / target - 1) * 100:+.1f}%",
+        "value": f"{forecast_gap_pct:+.1f}%",
         "definition": "月底收入预测相对月度经营目标的预计偏差。",
         "formula": "月底收入预测 ÷ 月度经营目标 − 1",
         "grain": "月度预测",
@@ -504,15 +609,16 @@ metric_catalog = [
         "owner": "数据平台",
         "refresh": "每小时",
         "sourceIds": ["data_freshness"],
-        "reconciliation": "1 个数据源延迟",
+        "reconciliation": f"{len(warning_sources)} 个数据源需关注",
         "status": "治理指标",
     },
 ]
 
+data_risk_source = warning_sources[0] if warning_sources else None
 evidence_chain = [
     {
         "type": "事实",
-        "claim": f"截至 7 月 25 日累计经营净收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%。",
+        "claim": f"截至 {AS_OF_LABEL}累计经营净收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%。",
         "confidence": 100,
         "metricId": "net_revenue",
         "logic": "确收总额扣除返点与退款，并与去年同期可比区间对齐。",
@@ -525,10 +631,10 @@ evidence_chain = [
     },
     {
         "type": "预测",
-        "claim": f"按近 7 日收入速度推演，月底预计 {money(month_end_forecast):.2f} 亿，较预算 {(month_end_forecast / target - 1) * 100:+.1f}%。",
+        "claim": f"按近 7 日收入速度推演，月底预计 {money(month_end_forecast):.2f} 亿，较预算 {forecast_gap_pct:+.1f}%。",
         "confidence": 87,
         "metricId": "month_end_forecast",
-        "logic": "累计净收入 + 近 7 日日均净收入 × 剩余 6 天，并校验策略事件。",
+        "logic": f"累计净收入 + 近 7 日日均净收入 × 剩余 {remaining_days} 天，并校验策略事件。",
         "sourceIds": [
             "billing_confirmations_daily",
             "forecast_baseline_daily",
@@ -538,7 +644,10 @@ evidence_chain = [
     },
     {
         "type": "判断",
-        "claim": "美妆个护与中小商家激励贡献主要增量，搜索流量和服饰行业形成主要拖累。",
+        "claim": (
+            f"{top_positive['dimension']}“{top_positive['name']}”贡献主要增量，"
+            f"{top_negative['dimension']}“{top_negative['name']}”形成主要拖累。"
+        ),
         "confidence": 84,
         "metricId": "yoy_growth",
         "logic": "对行业、广告产品、流量场景三类维度进行同比贡献排序，并关联策略事件。",
@@ -552,53 +661,73 @@ evidence_chain = [
     },
     {
         "type": "风险",
-        "claim": "转化数据延迟可能影响搜索流量归因幅度，需在业务沟通前复核。",
+        "claim": (
+            f"{data_risk_source['displayName']}未按时更新，相关归因需在业务沟通前复核。"
+            if data_risk_source
+            else "关键数据源均按时更新，本次分析未发现数据及时性风险。"
+        ),
         "confidence": 96,
         "metricId": "data_health",
-        "logic": "转化数据最后更新时间晚于 SLA 26 小时，标记为待确认而非既定结论。",
-        "sourceIds": ["conversions_daily", "data_freshness"],
+        "logic": (
+            f"{data_risk_source['issue']}，因此标记为待确认而非既定结论。"
+            if data_risk_source
+            else "数据源及时性、完整性、唯一性与关联成功率均通过质量门槛。"
+        ),
+        "sourceIds": (
+            [data_risk_source["id"], "data_freshness"]
+            if data_risk_source
+            else ["data_freshness"]
+        ),
     },
 ]
 
-alert_rules = [
-    {
-        "name": "搜索流量连续低于基线",
-        "metric": "搜索流量日收入",
-        "condition": "连续 3 日低于预测基线 5%",
-        "actual": "连续 4 日，低于 8.7%",
-        "status": "已触发",
-        "owner": "流量策略",
-        "action": "确认策略调整是否符合预期，并复核流量分配。",
-    },
-    {
-        "name": "月底预测低于预算",
-        "metric": "预测较预算差异",
-        "condition": "低于 -3.0%",
-        "actual": f"{(month_end_forecast / target - 1) * 100:.1f}%",
-        "status": "已触发",
-        "owner": "财务 BP",
-        "action": "按行业和流量场景拆解缺口，形成补量清单。",
-    },
-    {
-        "name": "数据源更新延迟",
-        "metric": "数据及时性",
-        "condition": "任一关键源超过 SLA",
-        "actual": "转化数据延迟 26 小时",
-        "status": "已触发",
-        "owner": "电商数据",
-        "action": "补跑转化任务，完成后自动重算归因。",
-    },
-]
+alert_rules = []
+if forecast_gap_pct <= -3:
+    alert_rules.append(
+        {
+            "name": "月底预测低于预算",
+            "metric": "预测较预算差异",
+            "condition": "低于 -3.0%",
+            "actual": f"{forecast_gap_pct:.1f}%",
+            "status": "已触发",
+            "owner": "财务 BP",
+            "action": "按行业、广告产品和流量场景拆解缺口，形成补量清单。",
+        }
+    )
+if top_negative["change"] < 0:
+    alert_rules.append(
+        {
+            "name": f"{top_negative['dimension']}主要拖累",
+            "metric": f"{top_negative['dimension']}收入同比贡献",
+            "condition": "负向贡献进入本期前三",
+            "actual": f"{top_negative['name']} {top_negative['change']:+.2f} 亿",
+            "status": "已触发",
+            "owner": "业务负责人",
+            "action": "确认变化是否符合策略预期，并补充可验证的业务背景。",
+        }
+    )
+if warning_sources:
+    alert_rules.append(
+        {
+            "name": "数据源更新延迟",
+            "metric": "数据及时性",
+            "condition": "任一关键源超过 SLA",
+            "actual": f"{warning_sources[0]['displayName']}：{warning_sources[0]['issue']}",
+            "status": "已触发",
+            "owner": warning_sources[0]["owner"],
+            "action": "补跑数据任务，完成后自动重算指标和归因。",
+        }
+    )
 
 revenue_model = {
     "comparisonFrame": [
-        {"label": "实际", "value": f"{money(net_current):.2f} 亿", "note": "截至 7 月 25 日"},
+        {"label": "实际", "value": f"{money(net_current):.2f} 亿", "note": f"截至 {AS_OF_LABEL}"},
         {"label": "同比", "value": f"{yoy:+.1f}%", "note": "去年同期可比口径"},
-        {"label": "预算", "value": f"{budget_attainment:.1f}%", "note": "时间进度 80.6%"},
+        {"label": "预算", "value": f"{budget_attainment:.1f}%", "note": f"时间进度 {time_progress_pct:.1f}%"},
         {
             "label": "最新预测",
             "value": f"{money(month_end_forecast):.2f} 亿",
-            "note": f"较预算 {(month_end_forecast / target - 1) * 100:+.1f}%",
+            "note": f"较预算 {forecast_gap_pct:+.1f}%",
         },
     ],
     "lenses": [
@@ -717,18 +846,22 @@ revenue_model = {
 dashboard = {
     "meta": {
         "title": "广告收入经营监控",
-        "asOf": "2026-07-25",
-        "generatedAt": datetime.now().isoformat(timespec="seconds"),
+        "asOf": AS_OF.isoformat(),
+        "asOfLabel": AS_OF_LABEL,
+        "periodLabel": PERIOD_LABEL,
+        "generatedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "demo": True,
         "sourceCount": len(registry),
         "onTimeSourceCount": sum(1 for s in sources if s["status"] == "按时"),
+        "factRowCount": len(joined),
+        "timeProgressPct": round(time_progress_pct, 1),
     },
     "kpis": {
         "mtdRevenue": money(net_current),
         "yoy": round(yoy, 1),
         "budgetAttainment": round(budget_attainment, 1),
         "forecast": money(month_end_forecast),
-        "forecastVsBudget": round((month_end_forecast / target - 1) * 100, 1),
+        "forecastVsBudget": round(forecast_gap_pct, 1),
         "monthlyBudget": money(target),
         "dataHealth": round(sum(1 for s in sources if s["status"] == "按时") / len(sources) * 100),
     },
@@ -756,20 +889,44 @@ dashboard = {
         "audience": "财务负责人、商业化负责人、行业运营负责人",
         "cadence": "每日 09:45",
         "channel": "飞书经营群",
-        "title": "广告收入 Daily Pulse｜7 月 25 日",
-        "summary": f"累计收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%；月底预计 {money(month_end_forecast):.2f} 亿，较预算 {(month_end_forecast / target - 1) * 100:.1f}%。",
-        "drivers": "主要增量：美妆个护、中小商家激励；主要拖累：搜索流量、服饰鞋包。",
-        "action": "今日需确认搜索策略影响，并补跑延迟的转化数据。",
+        "title": f"广告收入 Daily Pulse｜{AS_OF_LABEL}",
+        "summary": f"累计收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%；月底预计 {money(month_end_forecast):.2f} 亿，较预算 {forecast_gap_pct:+.1f}%。",
+        "drivers": (
+            f"主要增量：{top_positive['dimension']}“{top_positive['name']}”"
+            f"（{top_positive['change']:+.2f} 亿）；"
+            f"主要拖累：{top_negative['dimension']}“{top_negative['name']}”"
+            f"（{top_negative['change']:+.2f} 亿）。"
+        ),
+        "action": (
+            alert_rules[0]["action"]
+            if alert_rules
+            else "本期关键指标未触发行动阈值，继续监控。"
+        ),
     },
     "revenueModel": revenue_model,
     "executiveSummary": {
-        "headline": f"收入保持增长，但月底预计较预算低 {abs((month_end_forecast / target - 1) * 100):.1f}%",
+        "headline": (
+            f"收入同比 {yoy:+.1f}%，月底预计较预算低 {abs(forecast_gap_pct):.1f}%"
+            if forecast_gap_pct < 0
+            else f"收入同比 {yoy:+.1f}%，月底预计较预算高 {forecast_gap_pct:.1f}%"
+        ),
         "facts": [
-            f"截至 7 月 25 日累计收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%。",
+            f"截至 {AS_OF_LABEL}累计收入 {money(net_current):.2f} 亿，同比 {yoy:+.1f}%。",
             f"按近 7 日日均推演，月底预计 {money(month_end_forecast):.2f} 亿，预算达成约 {month_end_forecast / target * 100:.1f}%。",
         ],
-        "judgement": "美妆个护与中小商家激励贡献主要增量；搜索流量策略调整和服饰行业预算利用率下降形成拖累。",
-        "toVerify": "需要业务确认搜索流量变化是否符合策略预期，并核对转化数据源延迟是否影响归因幅度。",
+        "judgement": (
+            f"{top_positive['dimension']}“{top_positive['name']}”贡献主要增量；"
+            f"{top_negative['dimension']}“{top_negative['name']}”形成主要拖累，"
+            "具体业务原因仍需结合策略事件确认。"
+        ),
+        "toVerify": (
+            f"需要确认{top_negative['name']}的变化是否符合策略预期；"
+            + (
+                f"同时复核{warning_sources[0]['displayName']}的数据及时性。"
+                if warning_sources
+                else "关键数据源均已按时更新。"
+            )
+        ),
     },
 }
 

@@ -85,13 +85,17 @@ export interface RevenueSkillBrief {
   limitations: string[];
 }
 
-interface DashboardSnapshot {
+export interface DashboardSnapshot {
   meta: {
     asOf: string;
     generatedAt?: string;
+    asOfLabel?: string;
+    periodLabel?: string;
     demo?: boolean;
     sourceCount: number;
     onTimeSourceCount: number;
+    factRowCount?: number;
+    timeProgressPct?: number;
   };
   kpis: {
     mtdRevenue: number;
@@ -335,7 +339,9 @@ function createRuleBrief(snapshot: DashboardSnapshot): RevenueSkillBrief {
     run_id: crypto.randomUUID(),
     skill_name: "analyze-ecommerce-ad-revenue",
     skill_version: "1.0.0",
-    as_of: `${snapshot.meta.asOf}T09:31:00+08:00`,
+    as_of:
+      snapshot.meta.generatedAt ??
+      `${snapshot.meta.asOf}T00:00:00+08:00`,
     generated_at: new Date().toISOString(),
     audience: "finance_leader",
     decision_status: decisionStatus,
@@ -568,7 +574,7 @@ async function persistRun(
       brief.engine,
       brief.model,
       brief.data_quality.status,
-      JSON.stringify(compactSnapshot(snapshot)),
+      JSON.stringify(snapshot),
       JSON.stringify(brief),
     )
     .run();
@@ -611,16 +617,31 @@ export async function runRevenueSkill(
 export async function getLatestRevenueSkillRun(
   env: RevenueSkillEnv,
 ): Promise<RevenueSkillBrief | null> {
+  const state = await getLatestRevenueSkillState(env);
+  return state?.brief ?? null;
+}
+
+export interface RevenueSkillState {
+  brief: RevenueSkillBrief;
+  snapshot: DashboardSnapshot;
+}
+
+export async function getLatestRevenueSkillState(
+  env: RevenueSkillEnv,
+): Promise<RevenueSkillState | null> {
   if (!env.DB) return null;
   await ensureAnalysisStorage(env.DB);
   const row = await env.DB
     .prepare(
-      "SELECT result_json FROM analysis_runs ORDER BY generated_at DESC LIMIT 1",
+      "SELECT input_json, result_json FROM analysis_runs ORDER BY generated_at DESC LIMIT 1",
     )
-    .first<{ result_json: string }>();
+    .first<{ input_json: string; result_json: string }>();
   if (!row?.result_json) return null;
   try {
-    return JSON.parse(row.result_json) as RevenueSkillBrief;
+    return {
+      brief: JSON.parse(row.result_json) as RevenueSkillBrief,
+      snapshot: resolveDashboardSnapshot(JSON.parse(row.input_json)),
+    };
   } catch {
     return null;
   }

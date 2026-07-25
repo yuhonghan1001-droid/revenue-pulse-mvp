@@ -71,14 +71,16 @@ Skill 已接入线上执行链路：
 - `POST /api/analysis/run`：接收最新快照并执行 Skill，需要服务端令牌。
 - `GET /api/analysis/latest`：读取最近一次已经保存的分析结果。
 - `data_pipeline/publish_snapshot.py`：把 Python 管道的最新结果提交给线上执行器。
-- `.github/workflows/revenue-skill-daily.yml`：工作日北京时间 09:45 自动运行，也支持在 GitHub Actions 手动运行。
+- `.github/workflows/revenue-skill-daily.yml`：每日北京时间 09:45 自动运行，也支持在 GitHub Actions 手动运行。
 
-定时任务需要在 GitHub 仓库 Actions secrets 中配置 `REVENUE_PUSH_TOKEN`，其值应与托管环境中的同名密钥一致。
+定时任务需要在 GitHub 仓库 Actions secrets 中配置 `REVENUE_PUSH_TOKEN`，其值应与托管环境中的同名密钥一致。该令牌只用于执行收入分析，不与飞书应用凭证混用。
 
 线上环境可以配置：
 
 - `OPENAI_API_KEY`：可选；配置后由模型按照完整 Skill 生成管理层语言，必须作为密钥保存。
 - `OPENAI_MODEL`：可选；默认 `gpt-5.6-sol`。
+- `REVENUE_PUSH_TOKEN`：线上分析执行令牌，必须同时配置到托管环境和 GitHub Actions secrets。
+- `REVENUE_AS_OF`：可选的历史重跑日期，格式为 `YYYY-MM-DD`；未配置时自动使用收入与确收数据中的最新日期。
 
 未配置模型密钥时，系统使用可审计规则引擎生成简报，指标计算、质量门槛、版本保存和飞书推送仍然正常运行。AI 只增强管理层语言，不允许修改受治理指标。
 
@@ -112,6 +114,8 @@ dashboard.json → 经营驾驶舱
 - 数据源更新时间与 SLA
 
 数据源定义位于 `data_pipeline/config/source_registry.json`。真实接入时，可以把 CSV 读取替换为数据仓库查询、API 或自动下载适配器，保留后续的关联、检查和输出逻辑。
+
+每次线上运行都会保存完整数据快照和结构化分析结果。看板中的核心指标、趋势、动因、数据健康、指标口径、证据链和推送预览统一读取最近一次已保存快照。
 
 ## 本地运行
 

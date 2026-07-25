@@ -1,0 +1,31 @@
+name: Revenue Skill Daily
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 北京时间每日 09:45。GitHub cron 使用 UTC。
+    - cron: "45 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 获取项目
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 拼接注册数据源并生成最新快照
+        run: python3 data_pipeline/run_pipeline.py
+
+      - name: 执行收入分析 Skill 并推送飞书
+        env:
+          REVENUE_PUSH_TOKEN: ${{ secrets.REVENUE_PUSH_TOKEN }}
+          REVENUE_PULSE_URL: https://revenue-pulse-mvp.happynamely.chatgpt.site
+        run: python3 data_pipeline/publish_snapshot.py --push

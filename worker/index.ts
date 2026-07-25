@@ -4,7 +4,7 @@ import handler from "vinext/server/app-router-entry";
 import dashboard from "../app/data/dashboard.json";
 import {
   createRevenueSkillPreview,
-  getLatestRevenueSkillRun,
+  getLatestRevenueSkillState,
   runRevenueSkill,
   type RevenueSkillBrief,
   type RevenueSkillEnv,
@@ -15,6 +15,7 @@ interface Env extends RevenueSkillEnv {
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
   FEISHU_PUSH_TOKEN?: string;
+  REVENUE_PUSH_TOKEN?: string;
   FEISHU_RECIPIENT_OPEN_ID?: string;
   FEISHU_WEBHOOK_URL?: string;
   OPENAI_API_KEY?: string;
@@ -43,8 +44,12 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function briefTitle(brief: RevenueSkillBrief) {
+  const [, month, day] = brief.as_of.slice(0, 10).split("-");
+  return `广告收入 Daily Pulse｜${Number(month)} 月 ${Number(day)} 日`;
+}
+
 function buildFeishuCard(origin: string, brief: RevenueSkillBrief) {
-  const preview = dashboard.pushPreview;
   const kpis = brief.metrics;
   const forecastGap = kpis.forecast_vs_budget_pct.value;
 
@@ -57,7 +62,7 @@ function buildFeishuCard(origin: string, brief: RevenueSkillBrief) {
       template: forecastGap < 0 ? "orange" : "blue",
       title: {
         tag: "plain_text",
-        content: preview.title,
+        content: briefTitle(brief),
       },
     },
     elements: [
@@ -217,9 +222,10 @@ function hasDirectMessageConfig(env: Env) {
 }
 
 function isAuthorized(request: Request, env: Env) {
+  const expectedToken = env.REVENUE_PUSH_TOKEN ?? env.FEISHU_PUSH_TOKEN;
   return Boolean(
-    env.FEISHU_PUSH_TOKEN &&
-      request.headers.get("x-revenue-push-token") === env.FEISHU_PUSH_TOKEN,
+    expectedToken &&
+      request.headers.get("x-revenue-push-token") === expectedToken,
   );
 }
 
@@ -253,7 +259,7 @@ async function pushToFeishu(request: Request, env: Env) {
     return jsonResponse({
       ok: true,
       channel,
-      title: dashboard.pushPreview.title,
+      title: briefTitle(brief),
       brief,
     });
   } catch (error) {
@@ -300,13 +306,14 @@ async function runAnalysis(request: Request, env: Env) {
 
 async function latestAnalysis(env: Env) {
   try {
-    const stored = await getLatestRevenueSkillRun(env);
+    const stored = await getLatestRevenueSkillState(env);
     return jsonResponse({
       ok: true,
       persisted: Boolean(stored),
       aiConfigured: Boolean(env.OPENAI_API_KEY),
       storageConfigured: Boolean(env.DB),
-      brief: stored ?? createRevenueSkillPreview(),
+      brief: stored?.brief ?? createRevenueSkillPreview(),
+      snapshot: stored?.snapshot ?? dashboard,
     });
   } catch {
     return jsonResponse({
@@ -315,6 +322,7 @@ async function latestAnalysis(env: Env) {
       aiConfigured: Boolean(env.OPENAI_API_KEY),
       storageConfigured: false,
       brief: createRevenueSkillPreview(),
+      snapshot: dashboard,
     });
   }
 }

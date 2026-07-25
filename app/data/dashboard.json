@@ -2,10 +2,14 @@
   "meta": {
     "title": "广告收入经营监控",
     "asOf": "2026-07-25",
-    "generatedAt": "2026-07-25T14:14:26",
+    "asOfLabel": "7 月 25 日",
+    "periodLabel": "2026 年 7 月",
+    "generatedAt": "2026-07-25T20:13:08+08:00",
     "demo": true,
     "sourceCount": 24,
-    "onTimeSourceCount": 23
+    "onTimeSourceCount": 23,
+    "factRowCount": 27408,
+    "timeProgressPct": 80.6
   },
   "kpis": {
     "mtdRevenue": 2.36,
@@ -339,24 +343,31 @@
   "anomalies": [
     {
       "level": "高",
-      "title": "搜索流量收入连续 4 日低于基线",
-      "impact": "-0.18 亿",
-      "evidence": "7 月 12 日策略调整后，搜索流量变现率下降 8.7%",
-      "status": "待业务确认"
+      "title": "月底预测低于预算",
+      "impact": "-4.8%",
+      "evidence": "截至 7 月 25 日，月底预测 2.94 亿，月度预算 3.09 亿。",
+      "status": "需要行动"
     },
     {
       "level": "中",
-      "title": "服饰鞋包投放商家数下降",
-      "impact": "-0.11 亿",
-      "evidence": "成长商家预算利用率同比下降 6.2 个百分点",
-      "status": "已定位"
+      "title": "行业｜服饰鞋包形成主要拖累",
+      "impact": "-0.02 亿",
+      "evidence": "收入同比贡献 -0.02 亿，变化率 -6.7%。",
+      "status": "待业务确认"
     },
     {
       "level": "机会",
-      "title": "中小商家激励开始释放增量",
+      "title": "行业｜美妆个护贡献主要增量",
       "impact": "+0.09 亿",
-      "evidence": "激励上线后日均收入较上线前提升 10.4%",
+      "evidence": "收入同比贡献 +0.09 亿，变化率 +24.8%。",
       "status": "持续观察"
+    },
+    {
+      "level": "中",
+      "title": "广告转化日表未按时更新",
+      "impact": "数据风险",
+      "evidence": "最后更新 2026-07-24T07:30，未满足 D+1 09:00",
+      "status": "待数据负责人处理"
     }
   ],
   "qualityChecks": [
@@ -1011,7 +1022,7 @@
       "score": 83,
       "healthStatus": "需关注",
       "coverage": "01-01 至 07-25",
-      "issue": "较 SLA 延迟 26 小时，可能影响转化归因"
+      "issue": "最后更新 2026-07-24T07:30，未满足 D+1 09:00"
     },
     {
       "id": "traffic_inventory_daily",
@@ -1222,7 +1233,7 @@
         "billing_confirmations_daily",
         "calendar"
       ],
-      "reconciliation": "比较区间均截至 25 日",
+      "reconciliation": "本期与去年同期均截至每月 25 日",
       "status": "已认证"
     },
     {
@@ -1238,7 +1249,7 @@
         "billing_confirmations_daily",
         "market_target_monthly"
       ],
-      "reconciliation": "时间进度 80.6%",
+      "reconciliation": "自然日时间进度 80.6%",
       "status": "已认证"
     },
     {
@@ -1255,7 +1266,7 @@
         "forecast_baseline_daily",
         "strategy_events"
       ],
-      "reconciliation": "置信区间 ±0.08 亿",
+      "reconciliation": "基于截至 7 月 25 日的近 7 日运行速度",
       "status": "模型指标"
     },
     {
@@ -1318,7 +1329,7 @@
       "sourceIds": [
         "data_freshness"
       ],
-      "reconciliation": "1 个数据源延迟",
+      "reconciliation": "1 个数据源需关注",
       "status": "治理指标"
     }
   ],
@@ -1351,7 +1362,7 @@
     },
     {
       "type": "判断",
-      "claim": "美妆个护与中小商家激励贡献主要增量，搜索流量和服饰行业形成主要拖累。",
+      "claim": "行业“美妆个护”贡献主要增量，行业“服饰鞋包”形成主要拖累。",
       "confidence": 84,
       "metricId": "yoy_growth",
       "logic": "对行业、广告产品、流量场景三类维度进行同比贡献排序，并关联策略事件。",
@@ -1365,10 +1376,10 @@
     },
     {
       "type": "风险",
-      "claim": "转化数据延迟可能影响搜索流量归因幅度，需在业务沟通前复核。",
+      "claim": "广告转化日表未按时更新，相关归因需在业务沟通前复核。",
       "confidence": 96,
       "metricId": "data_health",
-      "logic": "转化数据最后更新时间晚于 SLA 26 小时，标记为待确认而非既定结论。",
+      "logic": "最后更新 2026-07-24T07:30，未满足 D+1 09:00，因此标记为待确认而非既定结论。",
       "sourceIds": [
         "conversions_daily",
         "data_freshness"
@@ -1377,31 +1388,31 @@
   ],
   "alertRules": [
     {
-      "name": "搜索流量连续低于基线",
-      "metric": "搜索流量日收入",
-      "condition": "连续 3 日低于预测基线 5%",
-      "actual": "连续 4 日，低于 8.7%",
-      "status": "已触发",
-      "owner": "流量策略",
-      "action": "确认策略调整是否符合预期，并复核流量分配。"
-    },
-    {
       "name": "月底预测低于预算",
       "metric": "预测较预算差异",
       "condition": "低于 -3.0%",
       "actual": "-4.8%",
       "status": "已触发",
       "owner": "财务 BP",
-      "action": "按行业和流量场景拆解缺口，形成补量清单。"
+      "action": "按行业、广告产品和流量场景拆解缺口，形成补量清单。"
+    },
+    {
+      "name": "行业主要拖累",
+      "metric": "行业收入同比贡献",
+      "condition": "负向贡献进入本期前三",
+      "actual": "服饰鞋包 -0.02 亿",
+      "status": "已触发",
+      "owner": "业务负责人",
+      "action": "确认变化是否符合策略预期，并补充可验证的业务背景。"
     },
     {
       "name": "数据源更新延迟",
       "metric": "数据及时性",
       "condition": "任一关键源超过 SLA",
-      "actual": "转化数据延迟 26 小时",
+      "actual": "广告转化日表：最后更新 2026-07-24T07:30，未满足 D+1 09:00",
       "status": "已触发",
       "owner": "电商数据",
-      "action": "补跑转化任务，完成后自动重算归因。"
+      "action": "补跑数据任务，完成后自动重算指标和归因。"
     }
   ],
   "pushPreview": {
@@ -1410,8 +1421,8 @@
     "channel": "飞书经营群",
     "title": "广告收入 Daily Pulse｜7 月 25 日",
     "summary": "累计收入 2.36 亿，同比 +7.5%；月底预计 2.94 亿，较预算 -4.8%。",
-    "drivers": "主要增量：美妆个护、中小商家激励；主要拖累：搜索流量、服饰鞋包。",
-    "action": "今日需确认搜索策略影响，并补跑延迟的转化数据。"
+    "drivers": "主要增量：行业“美妆个护”（+0.09 亿）；主要拖累：行业“服饰鞋包”（-0.02 亿）。",
+    "action": "按行业、广告产品和流量场景拆解缺口，形成补量清单。"
   },
   "revenueModel": {
     "comparisonFrame": [
@@ -1565,12 +1576,12 @@
     ]
   },
   "executiveSummary": {
-    "headline": "收入保持增长，但月底预计较预算低 4.8%",
+    "headline": "收入同比 +7.5%，月底预计较预算低 4.8%",
     "facts": [
       "截至 7 月 25 日累计收入 2.36 亿，同比 +7.5%。",
       "按近 7 日日均推演，月底预计 2.94 亿，预算达成约 95.2%。"
     ],
-    "judgement": "美妆个护与中小商家激励贡献主要增量；搜索流量策略调整和服饰行业预算利用率下降形成拖累。",
-    "toVerify": "需要业务确认搜索流量变化是否符合策略预期，并核对转化数据源延迟是否影响归因幅度。"
+    "judgement": "行业“美妆个护”贡献主要增量；行业“服饰鞋包”形成主要拖累，具体业务原因仍需结合策略事件确认。",
+    "toVerify": "需要确认服饰鞋包的变化是否符合策略预期；同时复核广告转化日表的数据及时性。"
   }
 }
