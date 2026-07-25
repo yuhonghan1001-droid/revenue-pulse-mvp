@@ -486,6 +486,10 @@ footer p { margin: 0; }
 .push-settings dl div { display: grid; grid-template-columns: 58px 1fr; gap: 7px; padding: 7px 0; border-top: 1px solid #d9dee7; }
 .push-settings dt { color: #8b94a3; font-size: 8px; }
 .push-settings dd { color: #5b6577; margin: 0; font-size: 8px; line-height: 1.5; }
+.connected-dot {
+  display: inline-block; width: 6px; height: 6px; margin-right: 5px;
+  border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft);
+}
 
 .rules-card { padding: 22px; }
 .rule-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 17px; }

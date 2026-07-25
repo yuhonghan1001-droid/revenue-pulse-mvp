@@ -740,6 +740,7 @@ export default function Home() {
                 <div><dt>接收人</dt><dd>{dashboard.pushPreview.audience}</dd></div>
                 <div><dt>触发方式</dt><dd>每日定时 + 异常即时</dd></div>
                 <div><dt>数据保护</dt><dd>延迟数据自动标记“待确认”</dd></div>
+                <div><dt>接入状态</dt><dd><span className="connected-dot" /> 飞书机器人已连接</dd></div>
               </dl>
             </div>
           </aside>
