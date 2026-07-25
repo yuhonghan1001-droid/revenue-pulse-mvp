@@ -6,6 +6,9 @@
 
 > 本项目只包含程序生成的模拟数据，不包含任何企业真实收入、商家或财务数据。
 
+如需更换 ChatGPT、Codex 或 GitHub 账号继续开发，请先阅读
+[`PROJECT_HANDOFF_CN.md`](PROJECT_HANDOFF_CN.md)。
+
 ## 解决什么问题
 
 财务 BP 经常需要回答：
