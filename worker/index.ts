@@ -141,8 +141,9 @@ async function pushToFeishu(request: Request, env: Env) {
     return jsonResponse({ ok: false, error: "Feishu push is not configured." }, 503);
   }
 
-  const expectedAuthorization = `Bearer ${env.FEISHU_PUSH_TOKEN}`;
-  if (request.headers.get("authorization") !== expectedAuthorization) {
+  // Use an app-specific header because the hosting layer reserves
+  // `Authorization` for its own sign-in and bypass mechanisms.
+  if (request.headers.get("x-revenue-push-token") !== env.FEISHU_PUSH_TOKEN) {
     return jsonResponse({ ok: false, error: "Unauthorized." }, 401);
   }
 
