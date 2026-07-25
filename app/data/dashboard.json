@@ -1,0 +1,640 @@
+{
+  "meta": {
+    "title": "广告收入经营监控",
+    "asOf": "2026-07-25",
+    "generatedAt": "2026-07-25T12:08:39",
+    "demo": true,
+    "sourceCount": 24,
+    "onTimeSourceCount": 23
+  },
+  "kpis": {
+    "mtdRevenue": 2.36,
+    "yoy": 7.5,
+    "budgetAttainment": 76.2,
+    "forecast": 2.94,
+    "forecastVsBudget": -4.8,
+    "monthlyBudget": 3.09,
+    "dataHealth": 96
+  },
+  "trend": [
+    {
+      "day": 1,
+      "actual": 0.09,
+      "forecast": 0.09,
+      "budget": 0.1
+    },
+    {
+      "day": 2,
+      "actual": 0.19,
+      "forecast": 0.19,
+      "budget": 0.2
+    },
+    {
+      "day": 3,
+      "actual": 0.28,
+      "forecast": 0.28,
+      "budget": 0.3
+    },
+    {
+      "day": 4,
+      "actual": 0.36,
+      "forecast": 0.36,
+      "budget": 0.4
+    },
+    {
+      "day": 5,
+      "actual": 0.45,
+      "forecast": 0.45,
+      "budget": 0.5
+    },
+    {
+      "day": 6,
+      "actual": 0.54,
+      "forecast": 0.54,
+      "budget": 0.6
+    },
+    {
+      "day": 7,
+      "actual": 0.63,
+      "forecast": 0.63,
+      "budget": 0.7
+    },
+    {
+      "day": 8,
+      "actual": 0.72,
+      "forecast": 0.72,
+      "budget": 0.8
+    },
+    {
+      "day": 9,
+      "actual": 0.82,
+      "forecast": 0.82,
+      "budget": 0.9
+    },
+    {
+      "day": 10,
+      "actual": 0.92,
+      "forecast": 0.92,
+      "budget": 1.0
+    },
+    {
+      "day": 11,
+      "actual": 1.01,
+      "forecast": 1.01,
+      "budget": 1.1
+    },
+    {
+      "day": 12,
+      "actual": 1.1,
+      "forecast": 1.1,
+      "budget": 1.2
+    },
+    {
+      "day": 13,
+      "actual": 1.19,
+      "forecast": 1.19,
+      "budget": 1.3
+    },
+    {
+      "day": 14,
+      "actual": 1.29,
+      "forecast": 1.29,
+      "budget": 1.4
+    },
+    {
+      "day": 15,
+      "actual": 1.39,
+      "forecast": 1.39,
+      "budget": 1.5
+    },
+    {
+      "day": 16,
+      "actual": 1.49,
+      "forecast": 1.49,
+      "budget": 1.6
+    },
+    {
+      "day": 17,
+      "actual": 1.58,
+      "forecast": 1.58,
+      "budget": 1.7
+    },
+    {
+      "day": 18,
+      "actual": 1.68,
+      "forecast": 1.68,
+      "budget": 1.8
+    },
+    {
+      "day": 19,
+      "actual": 1.76,
+      "forecast": 1.76,
+      "budget": 1.89
+    },
+    {
+      "day": 20,
+      "actual": 1.86,
+      "forecast": 1.86,
+      "budget": 1.99
+    },
+    {
+      "day": 21,
+      "actual": 1.96,
+      "forecast": 1.96,
+      "budget": 2.09
+    },
+    {
+      "day": 22,
+      "actual": 2.07,
+      "forecast": 2.07,
+      "budget": 2.19
+    },
+    {
+      "day": 23,
+      "actual": 2.17,
+      "forecast": 2.17,
+      "budget": 2.29
+    },
+    {
+      "day": 24,
+      "actual": 2.27,
+      "forecast": 2.27,
+      "budget": 2.39
+    },
+    {
+      "day": 25,
+      "actual": 2.36,
+      "forecast": 2.36,
+      "budget": 2.49
+    },
+    {
+      "day": 26,
+      "actual": null,
+      "forecast": 2.46,
+      "budget": 2.59
+    },
+    {
+      "day": 27,
+      "actual": null,
+      "forecast": 2.55,
+      "budget": 2.69
+    },
+    {
+      "day": 28,
+      "actual": null,
+      "forecast": 2.65,
+      "budget": 2.79
+    },
+    {
+      "day": 29,
+      "actual": null,
+      "forecast": 2.75,
+      "budget": 2.89
+    },
+    {
+      "day": 30,
+      "actual": null,
+      "forecast": 2.85,
+      "budget": 2.99
+    },
+    {
+      "day": 31,
+      "actual": null,
+      "forecast": 2.94,
+      "budget": 3.09
+    }
+  ],
+  "breakdowns": {
+    "industry": [
+      {
+        "name": "美妆个护",
+        "revenue": 0.43,
+        "change": 0.09,
+        "changePct": 24.8,
+        "share": 18.2
+      },
+      {
+        "name": "母婴宠物",
+        "revenue": 0.42,
+        "change": 0.04,
+        "changePct": 9.1,
+        "share": 17.8
+      },
+      {
+        "name": "数码3C",
+        "revenue": 0.41,
+        "change": 0.03,
+        "changePct": 9.0,
+        "share": 17.6
+      },
+      {
+        "name": "服饰鞋包",
+        "revenue": 0.33,
+        "change": -0.02,
+        "changePct": -6.7,
+        "share": 13.9
+      },
+      {
+        "name": "食品饮料",
+        "revenue": 0.38,
+        "change": 0.02,
+        "changePct": 5.6,
+        "share": 16.3
+      },
+      {
+        "name": "家居家电",
+        "revenue": 0.39,
+        "change": 0.02,
+        "changePct": 6.6,
+        "share": 16.7
+      }
+    ],
+    "product": [
+      {
+        "name": "推荐信息流",
+        "revenue": 0.69,
+        "change": 0.05,
+        "changePct": 7.4,
+        "share": 29.4
+      },
+      {
+        "name": "搜索广告",
+        "revenue": 0.61,
+        "change": 0.05,
+        "changePct": 8.9,
+        "share": 26.0
+      },
+      {
+        "name": "商城广告",
+        "revenue": 0.5,
+        "change": 0.04,
+        "changePct": 8.2,
+        "share": 21.1
+      },
+      {
+        "name": "直播加热",
+        "revenue": 0.57,
+        "change": 0.04,
+        "changePct": 7.7,
+        "share": 24.1
+      }
+    ],
+    "traffic": [
+      {
+        "name": "推荐流量",
+        "revenue": 0.69,
+        "change": 0.06,
+        "changePct": 9.6,
+        "share": 29.3
+      },
+      {
+        "name": "直播流量",
+        "revenue": 0.6,
+        "change": 0.05,
+        "changePct": 9.3,
+        "share": 25.5
+      },
+      {
+        "name": "商城流量",
+        "revenue": 0.47,
+        "change": 0.04,
+        "changePct": 9.8,
+        "share": 19.8
+      },
+      {
+        "name": "搜索流量",
+        "revenue": 0.61,
+        "change": 0.02,
+        "changePct": 3.8,
+        "share": 25.9
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": "美妆个护",
+      "value": 0.09,
+      "type": "positive",
+      "reason": "商家投放强度与流量协同增长"
+    },
+    {
+      "name": "母婴宠物",
+      "value": 0.04,
+      "type": "positive",
+      "reason": "商家投放强度与流量协同增长"
+    },
+    {
+      "name": "数码3C",
+      "value": 0.03,
+      "type": "positive",
+      "reason": "商家投放强度与流量协同增长"
+    },
+    {
+      "name": "服饰鞋包",
+      "value": -0.02,
+      "type": "negative",
+      "reason": "活跃投放商家与预算利用率下降"
+    }
+  ],
+  "anomalies": [
+    {
+      "level": "高",
+      "title": "搜索流量收入连续 4 日低于基线",
+      "impact": "-0.18 亿",
+      "evidence": "7 月 12 日策略调整后，搜索流量变现率下降 8.7%",
+      "status": "待业务确认"
+    },
+    {
+      "level": "中",
+      "title": "服饰鞋包投放商家数下降",
+      "impact": "-0.11 亿",
+      "evidence": "成长商家预算利用率同比下降 6.2 个百分点",
+      "status": "已定位"
+    },
+    {
+      "level": "机会",
+      "title": "中小商家激励开始释放增量",
+      "impact": "+0.09 亿",
+      "evidence": "激励上线后日均收入较上线前提升 10.4%",
+      "status": "持续观察"
+    }
+  ],
+  "qualityChecks": [
+    {
+      "name": "24 个源文件到齐",
+      "status": "passed",
+      "detail": "24/24"
+    },
+    {
+      "name": "复合主键无重复",
+      "status": "passed",
+      "detail": "0 条重复"
+    },
+    {
+      "name": "维表关联完整",
+      "status": "passed",
+      "detail": "0 条未匹配"
+    },
+    {
+      "name": "经营口径与确收对账",
+      "status": "passed",
+      "detail": "差异 0.49%"
+    },
+    {
+      "name": "数据更新及时性",
+      "status": "warning",
+      "detail": "23/24 按时"
+    }
+  ],
+  "sources": [
+    {
+      "id": "merchant_master",
+      "file": "merchant_master.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "商家运营",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "merchant_industry",
+      "file": "merchant_industry.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "行业运营",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "merchant_segment",
+      "file": "merchant_segment.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "商家策略",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "merchant_region",
+      "file": "merchant_region.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "商家运营",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "account_owner",
+      "file": "account_owner.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "销售运营",
+      "sla": "D+1 09:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "merchant_lifecycle",
+      "file": "merchant_lifecycle.csv",
+      "grain": "merchant_id",
+      "join_key": "merchant_id",
+      "owner": "增长策略",
+      "sla": "D+1 09:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "product_master",
+      "file": "product_master.csv",
+      "grain": "product_id",
+      "join_key": "product_id",
+      "owner": "广告产品",
+      "sla": "变更时更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "product_pricing",
+      "file": "product_pricing.csv",
+      "grain": "product_id",
+      "join_key": "product_id",
+      "owner": "商业产品",
+      "sla": "变更时更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "traffic_master",
+      "file": "traffic_master.csv",
+      "grain": "traffic_id",
+      "join_key": "traffic_id",
+      "owner": "流量策略",
+      "sla": "变更时更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "calendar",
+      "file": "calendar.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "数据平台",
+      "sla": "年度更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "promotion_calendar",
+      "file": "promotion_calendar.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "营销运营",
+      "sla": "活动前更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "strategy_events",
+      "file": "strategy_events.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "经营分析",
+      "sla": "事件发生时",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "revenue_transactions",
+      "file": "revenue_transactions.csv",
+      "grain": "date×merchant×product×traffic",
+      "join_key": "date,merchant_id,product_id,traffic_id",
+      "owner": "广告计费",
+      "sla": "D+1 07:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "impressions_daily",
+      "file": "impressions_daily.csv",
+      "grain": "date×merchant",
+      "join_key": "date,merchant_id",
+      "owner": "广告数据",
+      "sla": "D+1 07:30",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "clicks_daily",
+      "file": "clicks_daily.csv",
+      "grain": "date×merchant",
+      "join_key": "date,merchant_id",
+      "owner": "广告数据",
+      "sla": "D+1 07:30",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "conversions_daily",
+      "file": "conversions_daily.csv",
+      "grain": "date×merchant",
+      "join_key": "date,merchant_id",
+      "owner": "电商数据",
+      "sla": "D+1 09:00",
+      "lastUpdated": "2026-07-24T07:30",
+      "status": "延迟"
+    },
+    {
+      "id": "traffic_inventory_daily",
+      "file": "traffic_inventory_daily.csv",
+      "grain": "date×traffic",
+      "join_key": "date,traffic_id",
+      "owner": "流量策略",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "merchant_budget_daily",
+      "file": "merchant_budget_daily.csv",
+      "grain": "date×merchant",
+      "join_key": "date,merchant_id",
+      "owner": "商家运营",
+      "sla": "D+1 08:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "billing_confirmations_daily",
+      "file": "billing_confirmations_daily.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "财务结算",
+      "sla": "D+2 10:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "rebates_daily",
+      "file": "rebates_daily.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "商业财务",
+      "sla": "D+2 12:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "refunds_daily",
+      "file": "refunds_daily.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "财务结算",
+      "sla": "D+2 12:00",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "forecast_baseline_daily",
+      "file": "forecast_baseline_daily.csv",
+      "grain": "date",
+      "join_key": "date",
+      "owner": "财务 BP",
+      "sla": "每月更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "market_target_monthly",
+      "file": "market_target_monthly.csv",
+      "grain": "month",
+      "join_key": "month",
+      "owner": "财务 BP",
+      "sla": "季度更新",
+      "lastUpdated": "2026-07-25T09:30",
+      "status": "按时"
+    },
+    {
+      "id": "data_freshness",
+      "file": "data_freshness.csv",
+      "grain": "source_id",
+      "join_key": "source_id",
+      "owner": "数据平台",
+      "sla": "每小时",
+      "lastUpdated": "2026-07-25T09:31",
+      "status": "按时"
+    }
+  ],
+  "executiveSummary": {
+    "headline": "收入保持增长，但月底预计较预算低 4.8%",
+    "facts": [
+      "截至 7 月 25 日累计收入 2.36 亿，同比 +7.5%。",
+      "按近 7 日日均推演，月底预计 2.94 亿，预算达成约 95.2%。"
+    ],
+    "judgement": "美妆个护与中小商家激励贡献主要增量；搜索流量策略调整和服饰行业预算利用率下降形成拖累。",
+    "toVerify": "需要业务确认搜索流量变化是否符合策略预期，并核对转化数据源延迟是否影响归因幅度。"
+  }
+}

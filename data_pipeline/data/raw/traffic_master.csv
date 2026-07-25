@@ -1,0 +1,5 @@
+traffic_id,traffic_name,quality_index
+T01,推荐流量,1.3
+T02,搜索流量,1.12
+T03,商城流量,0.88
+T04,直播流量,1.05
