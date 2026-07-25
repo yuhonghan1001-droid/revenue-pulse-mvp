@@ -6,7 +6,10 @@ import dashboard from "../app/data/dashboard.json";
 interface Env {
   ASSETS: Fetcher;
   DB?: D1Database;
+  FEISHU_APP_ID?: string;
+  FEISHU_APP_SECRET?: string;
   FEISHU_PUSH_TOKEN?: string;
+  FEISHU_RECIPIENT_OPEN_ID?: string;
   FEISHU_WEBHOOK_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -37,107 +40,176 @@ function buildFeishuCard(origin: string) {
   const kpis = dashboard.kpis;
 
   return {
-    msg_type: "interactive",
-    card: {
-      config: {
-        wide_screen_mode: true,
-        enable_forward: true,
-      },
-      header: {
-        template: kpis.forecastVsBudget < 0 ? "orange" : "blue",
-        title: {
-          tag: "plain_text",
-          content: preview.title,
-        },
-      },
-      elements: [
-        {
-          tag: "div",
-          text: {
-            tag: "lark_md",
-            content: `**经营结论**\n${preview.summary}`,
-          },
-        },
-        {
-          tag: "hr",
-        },
-        {
-          tag: "div",
-          fields: [
-            {
-              is_short: true,
-              text: {
-                tag: "lark_md",
-                content: `**累计收入**\n${kpis.mtdRevenue.toFixed(2)} 亿`,
-              },
-            },
-            {
-              is_short: true,
-              text: {
-                tag: "lark_md",
-                content: `**同比**\n+${kpis.yoy}%`,
-              },
-            },
-            {
-              is_short: true,
-              text: {
-                tag: "lark_md",
-                content: `**月底预测**\n${kpis.forecast.toFixed(2)} 亿`,
-              },
-            },
-            {
-              is_short: true,
-              text: {
-                tag: "lark_md",
-                content: `**较预算**\n${kpis.forecastVsBudget}%`,
-              },
-            },
-          ],
-        },
-        {
-          tag: "div",
-          text: {
-            tag: "lark_md",
-            content: `**动因**\n${preview.drivers}`,
-          },
-        },
-        {
-          tag: "div",
-          text: {
-            tag: "lark_md",
-            content: `**今日行动**\n${preview.action}`,
-          },
-        },
-        {
-          tag: "note",
-          elements: [
-            {
-              tag: "plain_text",
-              content: `数据健康度 ${dashboard.healthSummary.averageScore} 分 · ${dashboard.healthSummary.warning} 个数据源需关注`,
-            },
-          ],
-        },
-        {
-          tag: "action",
-          actions: [
-            {
-              tag: "button",
-              type: "primary",
-              text: {
-                tag: "plain_text",
-                content: "查看经营看板",
-              },
-              url: origin,
-            },
-          ],
-        },
-      ],
+    config: {
+      wide_screen_mode: true,
+      enable_forward: true,
     },
+    header: {
+      template: kpis.forecastVsBudget < 0 ? "orange" : "blue",
+      title: {
+        tag: "plain_text",
+        content: preview.title,
+      },
+    },
+    elements: [
+      {
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**经营结论**\n${preview.summary}`,
+        },
+      },
+      {
+        tag: "hr",
+      },
+      {
+        tag: "div",
+        fields: [
+          {
+            is_short: true,
+            text: {
+              tag: "lark_md",
+              content: `**累计收入**\n${kpis.mtdRevenue.toFixed(2)} 亿`,
+            },
+          },
+          {
+            is_short: true,
+            text: {
+              tag: "lark_md",
+              content: `**同比**\n+${kpis.yoy}%`,
+            },
+          },
+          {
+            is_short: true,
+            text: {
+              tag: "lark_md",
+              content: `**月底预测**\n${kpis.forecast.toFixed(2)} 亿`,
+            },
+          },
+          {
+            is_short: true,
+            text: {
+              tag: "lark_md",
+              content: `**较预算**\n${kpis.forecastVsBudget}%`,
+            },
+          },
+        ],
+      },
+      {
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**动因**\n${preview.drivers}`,
+        },
+      },
+      {
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**今日行动**\n${preview.action}`,
+        },
+      },
+      {
+        tag: "note",
+        elements: [
+          {
+            tag: "plain_text",
+            content: `数据健康度 ${dashboard.healthSummary.averageScore} 分 · ${dashboard.healthSummary.warning} 个数据源需关注`,
+          },
+        ],
+      },
+      {
+        tag: "action",
+        actions: [
+          {
+            tag: "button",
+            type: "primary",
+            text: {
+              tag: "plain_text",
+              content: "查看经营看板",
+            },
+            url: origin,
+          },
+        ],
+      },
+    ],
   };
 }
 
+async function getTenantAccessToken(env: Env) {
+  const response = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      app_id: env.FEISHU_APP_ID,
+      app_secret: env.FEISHU_APP_SECRET,
+    }),
+  });
+  const result = await response.json().catch(() => null) as
+    | { code?: number; msg?: string; tenant_access_token?: string }
+    | null;
+
+  if (!response.ok || result?.code !== 0 || !result.tenant_access_token) {
+    throw new Error(result?.msg ?? "Unable to obtain Feishu tenant access token.");
+  }
+  return result.tenant_access_token;
+}
+
+async function pushDirectMessage(origin: string, env: Env) {
+  const accessToken = await getTenantAccessToken(env);
+  const response = await fetch(
+    "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        receive_id: env.FEISHU_RECIPIENT_OPEN_ID,
+        msg_type: "interactive",
+        content: JSON.stringify(buildFeishuCard(origin)),
+      }),
+    },
+  );
+  const result = await response.json().catch(() => null) as
+    | { code?: number; msg?: string }
+    | null;
+
+  if (!response.ok || result?.code !== 0) {
+    throw new Error(result?.msg ?? "Feishu rejected the direct message.");
+  }
+}
+
+async function pushGroupMessage(origin: string, env: Env) {
+  const response = await fetch(env.FEISHU_WEBHOOK_URL!, {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      msg_type: "interactive",
+      card: buildFeishuCard(origin),
+    }),
+  });
+  const result = await response.json().catch(() => null) as
+    | { code?: number; StatusCode?: number; msg?: string; StatusMessage?: string }
+    | null;
+  const rejected =
+    !response.ok ||
+    (typeof result?.code === "number" && result.code !== 0) ||
+    (typeof result?.StatusCode === "number" && result.StatusCode !== 0);
+
+  if (rejected) {
+    throw new Error(result?.msg ?? result?.StatusMessage ?? "Feishu rejected the group message.");
+  }
+}
+
+function hasDirectMessageConfig(env: Env) {
+  return Boolean(env.FEISHU_APP_ID && env.FEISHU_APP_SECRET && env.FEISHU_RECIPIENT_OPEN_ID);
+}
+
 async function pushToFeishu(request: Request, env: Env) {
-  if (!env.FEISHU_PUSH_TOKEN || !env.FEISHU_WEBHOOK_URL) {
+  const directMessageConfigured = hasDirectMessageConfig(env);
+  if (!env.FEISHU_PUSH_TOKEN || (!directMessageConfigured && !env.FEISHU_WEBHOOK_URL)) {
     return jsonResponse({ ok: false, error: "Feishu push is not configured." }, 503);
   }
 
@@ -148,25 +220,17 @@ async function pushToFeishu(request: Request, env: Env) {
   }
 
   const origin = new URL(request.url).origin;
-  const feishuResponse = await fetch(env.FEISHU_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify(buildFeishuCard(origin)),
-  });
-
-  const result = await feishuResponse.json().catch(() => null) as
-    | { code?: number; StatusCode?: number; msg?: string; StatusMessage?: string }
-    | null;
-  const rejected =
-    !feishuResponse.ok ||
-    (typeof result?.code === "number" && result.code !== 0) ||
-    (typeof result?.StatusCode === "number" && result.StatusCode !== 0);
-
-  if (rejected) {
+  try {
+    if (directMessageConfigured) {
+      await pushDirectMessage(origin, env);
+    } else {
+      await pushGroupMessage(origin, env);
+    }
+  } catch (error) {
     return jsonResponse(
       {
         ok: false,
-        error: result?.msg ?? result?.StatusMessage ?? "Feishu rejected the push.",
+        error: error instanceof Error ? error.message : "Feishu rejected the push.",
       },
       502,
     );
@@ -174,7 +238,7 @@ async function pushToFeishu(request: Request, env: Env) {
 
   return jsonResponse({
     ok: true,
-    channel: dashboard.pushPreview.channel,
+    channel: directMessageConfigured ? "飞书个人私信" : dashboard.pushPreview.channel,
     title: dashboard.pushPreview.title,
   });
 }
