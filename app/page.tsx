@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import dashboard from "./data/dashboard.json";
 
 type DimensionKey = "industry" | "product" | "traffic";
+type HealthFilter = "全部" | "健康" | "需关注";
 type BreakdownItem = {
   name: string;
   revenue: number;
@@ -24,6 +25,9 @@ const icon = {
   driver: "⌘",
   quality: "◇",
   source: "⊞",
+  metric: "≡",
+  brief: "✦",
+  model: "⌬",
   arrow: "↗",
 };
 
@@ -155,20 +159,20 @@ function DataPanel({ onClose }: { onClose: () => void }) {
 
         <div className="source-list">
           <div className="source-list-head">
-            <span>数据源</span><span>粒度 / 关联键</span><span>状态</span>
+            <span>数据源</span><span>质量与关联</span><span>得分</span>
           </div>
-          {dashboard.sources.map((source, index) => (
+          {dashboard.sourceHealth.map((source, index) => (
             <div className="source-row" key={source.id}>
               <div>
                 <i>{String(index + 1).padStart(2, "0")}</i>
-                <span><strong>{source.id}</strong><small>{source.owner}</small></span>
+                <span><strong>{source.displayName}</strong><small>{source.owner} · {source.lastUpdated.slice(5).replace("T", " ")}</small></span>
               </div>
               <div>
-                <strong>{source.grain}</strong>
-                <small>Key: {source.join_key}</small>
+                <strong>完整 {source.completeness}% · 关联 {source.joinRate}%</strong>
+                <small>{source.rowCount.toLocaleString("zh-CN")} 行 · {source.coverage}</small>
               </div>
-              <span className={`status-pill ${source.status === "按时" ? "ok" : "late"}`}>
-                {source.status}
+              <span className={`status-pill ${source.healthStatus === "健康" ? "ok" : "late"}`}>
+                {source.score}
               </span>
             </div>
           ))}
@@ -185,6 +189,13 @@ export default function Home() {
   );
   const [showDataPanel, setShowDataPanel] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [healthFilter, setHealthFilter] = useState<HealthFilter>("全部");
+  const [selectedMetricId, setSelectedMetricId] = useState(
+    dashboard.metricCatalog[0].id,
+  );
+  const [selectedLensId, setSelectedLensId] = useState(
+    dashboard.revenueModel.lenses[0].id,
+  );
 
   const currentBreakdown = dashboard.breakdowns[dimension] as BreakdownItem[];
   const selected =
@@ -194,6 +205,15 @@ export default function Home() {
     ...currentBreakdown.map((item) => Math.abs(item.change)),
   );
   const forecastAhead = dashboard.kpis.forecastVsBudget >= 0;
+  const filteredSources = dashboard.sourceHealth.filter(
+    (source) => healthFilter === "全部" || source.healthStatus === healthFilter,
+  );
+  const selectedMetric =
+    dashboard.metricCatalog.find((metric) => metric.id === selectedMetricId) ??
+    dashboard.metricCatalog[0];
+  const selectedLens =
+    dashboard.revenueModel.lenses.find((lens) => lens.id === selectedLensId) ??
+    dashboard.revenueModel.lenses[0];
 
   const summaryText = useMemo(
     () =>
@@ -226,13 +246,16 @@ export default function Home() {
         </div>
         <nav aria-label="主导航">
           <a className="active" href="#overview"><span>{icon.overview}</span>经营总览</a>
+          <a href="#revenue-model"><span>{icon.model}</span>收入模型</a>
           <a href="#trend"><span>{icon.pulse}</span>趋势预测</a>
           <a href="#drivers"><span>{icon.driver}</span>动因拆解</a>
-          <button onClick={() => setShowDataPanel(true)}><span>{icon.quality}</span>数据质量</button>
+          <a href="#data-health"><span>{icon.quality}</span>数据健康</a>
+          <a href="#metrics"><span>{icon.metric}</span>指标口径</a>
+          <a href="#briefing"><span>{icon.brief}</span>自动简报</a>
         </nav>
         <div className="sidebar-foot">
-          <div className="health-ring">96<small>%</small></div>
-          <div><strong>数据健康</strong><span>23 / 24 按时</span></div>
+          <div className="health-ring">{dashboard.healthSummary.averageScore}<small>分</small></div>
+          <div><strong>数据健康</strong><span>{dashboard.healthSummary.healthy} 健康 · {dashboard.healthSummary.warning} 关注</span></div>
         </div>
       </aside>
 
@@ -290,12 +313,109 @@ export default function Home() {
           </article>
           <article className="kpi-card">
             <div className="kpi-head"><span>数据健康度</span><i>24 个数据源</i></div>
-            <strong>{dashboard.kpis.dataHealth}<small>%</small></strong>
+            <strong>{dashboard.healthSummary.averageScore}<small>分</small></strong>
             <div className="mini-status">
-              <span className="ok">23 按时</span>
-              <span className="late">1 延迟</span>
+              <span className="ok">{dashboard.healthSummary.healthy} 健康</span>
+              <span className="late">{dashboard.healthSummary.warning} 需关注</span>
             </div>
-            <div className="kpi-foot"><em>转化数据更新至 7 月 24 日</em></div>
+            <div className="kpi-foot"><em>关联成功率 {dashboard.healthSummary.joinSuccess}%</em></div>
+          </article>
+        </section>
+
+        <section className="module-section" id="revenue-model">
+          <article className="card revenue-model-card">
+            <div className="module-head">
+              <div>
+                <span className="eyebrow">BP REVENUE MODEL</span>
+                <h2>财务 BP 收入分析框架</h2>
+                <p>先确认结果，再解释驱动，最后落到预测、策略判断和业务行动。</p>
+              </div>
+              <span className="model-badge">Actual · Budget · Forecast · Drivers</span>
+            </div>
+
+            <div className="comparison-frame">
+              {dashboard.revenueModel.comparisonFrame.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.note}</small>
+                </div>
+              ))}
+            </div>
+
+            <div className="revenue-model-layout">
+              <div className="lens-workbench">
+                <div className="lens-tabs" aria-label="切换收入分析视角">
+                  {dashboard.revenueModel.lenses.map((lens) => (
+                    <button
+                      key={lens.id}
+                      className={selectedLens.id === lens.id ? "active" : ""}
+                      onClick={() => setSelectedLensId(lens.id)}
+                    >
+                      {lens.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="lens-title">
+                  <div><span>要回答的问题</span><strong>{selectedLens.question}</strong></div>
+                  <code>{selectedLens.formula}</code>
+                </div>
+                <div className="driver-chain">
+                  {selectedLens.nodes.map((node, index) => (
+                    <div className="driver-node-wrap" key={node.name}>
+                      <div className={`driver-node ${node.value === "待接入" ? "missing" : ""}`}>
+                        <span>{node.name}</span>
+                        <strong>{node.value}</strong>
+                        <small className={node.change.startsWith("+") ? "up" : node.change.startsWith("-") ? "down" : ""}>
+                          {node.change}
+                        </small>
+                      </div>
+                      {index < selectedLens.nodes.length - 1 && <i>×</i>}
+                    </div>
+                  ))}
+                </div>
+                <div className="model-source-line">
+                  <span>证据数据</span>
+                  {selectedLens.sourceIds.map((sourceId) => (
+                    <button key={sourceId} onClick={() => setShowDataPanel(true)}>
+                      {dashboard.sourceHealth.find((source) => source.id === sourceId)?.displayName ?? sourceId}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <aside className="forecast-method">
+                <span className="eyebrow">LATEST ESTIMATE</span>
+                <h3>月底最新预测</h3>
+                <strong>{dashboard.revenueModel.forecastMethod.output}</strong>
+                <p>{dashboard.revenueModel.forecastMethod.formula}</p>
+                <div className="forecast-bridge">
+                  <span><small>已实现</small>{dashboard.revenueModel.forecastMethod.actual}</span>
+                  <i>+</i>
+                  <span><small>剩余基线</small>{dashboard.revenueModel.forecastMethod.baseline}</span>
+                </div>
+                <div className="forecast-note">
+                  <span>假设</span>{dashboard.revenueModel.forecastMethod.adjustment}
+                </div>
+                <div className="forecast-confidence">
+                  <span>预测可信度</span><strong>{dashboard.revenueModel.forecastMethod.confidence}</strong>
+                </div>
+              </aside>
+            </div>
+
+            <div className="knowledge-gaps">
+              <div>
+                <span className="eyebrow">KNOWN GAPS</span>
+                <strong>要进入真实业务，还需补齐</strong>
+              </div>
+              {dashboard.revenueModel.knowledgeGaps.map((gap) => (
+                <div key={gap.name}>
+                  <span>{gap.priority}</span>
+                  <strong>{gap.name}</strong>
+                  <p>{gap.impact}</p>
+                </div>
+              ))}
+            </div>
           </article>
         </section>
 
@@ -438,8 +558,223 @@ export default function Home() {
           </article>
         </section>
 
+        <section className="module-section" id="data-health">
+          <article className="card health-center">
+            <div className="module-head">
+              <div>
+                <span className="eyebrow">DATA HEALTH CENTER</span>
+                <h2>24 个数据源健康中心</h2>
+                <p>不是只看任务有没有跑完，而是同时检查及时性、完整性、唯一性和关联成功率。</p>
+              </div>
+              <button className="ghost-button" onClick={() => setShowDataPanel(true)}>
+                查看完整数据链路 <span>{icon.arrow}</span>
+              </button>
+            </div>
+
+            <div className="health-overview">
+              <div className="health-score-card">
+                <div className="large-health-ring">{dashboard.healthSummary.averageScore}<small>/100</small></div>
+                <div><span>综合健康得分</span><strong>整体可用于经营分析</strong><small>1 个数据源需在归因前复核</small></div>
+              </div>
+              <div className="health-stat"><span>健康数据源</span><strong>{dashboard.healthSummary.healthy}<small>/24</small></strong><em className="up">全部关键事实表已到齐</em></div>
+              <div className="health-stat"><span>本次处理数据</span><strong>{dashboard.healthSummary.totalRows.toLocaleString("zh-CN")}<small>行</small></strong><em>含 27,408 行经营事实</em></div>
+              <div className="health-stat"><span>关联成功率</span><strong>{dashboard.healthSummary.joinSuccess}<small>%</small></strong><em>主键与维表均可追溯</em></div>
+            </div>
+
+            <div className="health-toolbar">
+              <div className="filter-tabs" aria-label="筛选数据源健康状态">
+                {(["全部", "健康", "需关注"] as HealthFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    className={healthFilter === filter ? "active" : ""}
+                    onClick={() => setHealthFilter(filter)}
+                  >
+                    {filter}
+                    <span>
+                      {filter === "全部"
+                        ? dashboard.sourceHealth.length
+                        : dashboard.sourceHealth.filter((source) => source.healthStatus === filter).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p><span className="live-dot" /> 最近检查：2026-07-25 09:31</p>
+            </div>
+
+            <div className="health-table" role="table" aria-label="数据源健康明细">
+              <div className="health-table-row health-table-head" role="row">
+                <span>数据源 / 负责人</span>
+                <span>数据量</span>
+                <span>完整性</span>
+                <span>关联率</span>
+                <span>最后更新</span>
+                <span>状态</span>
+              </div>
+              {filteredSources.map((source) => (
+                <div className="health-table-row" role="row" key={source.id}>
+                  <div className="source-identity">
+                    <i>{source.category.slice(0, 2)}</i>
+                    <span><strong>{source.displayName}</strong><small>{source.owner} · {source.sla}</small></span>
+                  </div>
+                  <span>{source.rowCount.toLocaleString("zh-CN")} 行<small>{source.coverage}</small></span>
+                  <span>{source.completeness}%<small>{source.duplicateCount} 条重复</small></span>
+                  <span>{source.joinRate}%<small>Key: {source.join_key}</small></span>
+                  <span>{source.lastUpdated.slice(5).replace("T", " ")}<small>{source.status}</small></span>
+                  <span className={`health-status ${source.healthStatus === "健康" ? "healthy" : "warning"}`}>
+                    <b>{source.score}</b>{source.healthStatus}
+                  </span>
+                  {source.issue !== "无异常" && <p className="source-issue">{source.issue}</p>}
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="metric-section" id="metrics">
+          <article className="card metric-catalog">
+            <div className="module-head">
+              <div>
+                <span className="eyebrow">METRIC CONTRACTS</span>
+                <h2>指标口径中心</h2>
+                <p>一套口径同时服务看板、Excel、管理层推送和 AI Agent。</p>
+              </div>
+              <span className="certified-badge">{dashboard.metricCatalog.length} 个治理指标</span>
+            </div>
+            <div className="metric-layout">
+              <div className="metric-list">
+                {dashboard.metricCatalog.map((metric) => (
+                  <button
+                    key={metric.id}
+                    className={selectedMetric.id === metric.id ? "selected" : ""}
+                    onClick={() => setSelectedMetricId(metric.id)}
+                  >
+                    <span><strong>{metric.name}</strong><small>{metric.owner} · {metric.status}</small></span>
+                    <em>{metric.value}</em>
+                    <i>›</i>
+                  </button>
+                ))}
+              </div>
+              <aside className="metric-detail">
+                <div className="metric-detail-head">
+                  <span>{selectedMetric.status}</span>
+                  <small>Metric ID · {selectedMetric.id}</small>
+                </div>
+                <h3>{selectedMetric.name}</h3>
+                <strong>{selectedMetric.value}</strong>
+                <p>{selectedMetric.definition}</p>
+                <dl>
+                  <div><dt>统一公式</dt><dd>{selectedMetric.formula}</dd></div>
+                  <div><dt>统计粒度</dt><dd>{selectedMetric.grain}</dd></div>
+                  <div><dt>更新频率</dt><dd>{selectedMetric.refresh}</dd></div>
+                  <div><dt>对账说明</dt><dd>{selectedMetric.reconciliation}</dd></div>
+                </dl>
+                <div className="source-chips">
+                  <span>依赖数据</span>
+                  <div>
+                    {selectedMetric.sourceIds.map((sourceId) => (
+                      <button
+                        key={sourceId}
+                        onClick={() => setShowDataPanel(true)}
+                        title="查看数据链路"
+                      >
+                        {dashboard.sourceHealth.find((source) => source.id === sourceId)?.displayName ?? sourceId}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </article>
+        </section>
+
+        <section className="briefing-grid" id="briefing">
+          <article className="card evidence-card">
+            <div className="module-head">
+              <div>
+                <span className="eyebrow">EXPLAINABLE BRIEF</span>
+                <h2>经营结论证据链</h2>
+                <p>AI 只负责组织语言；事实、预测和判断均由已认证指标生成。</p>
+              </div>
+              <span className="trace-badge">100% 可回溯</span>
+            </div>
+            <div className="evidence-timeline">
+              {dashboard.evidenceChain.map((item, index) => (
+                <div className="evidence-step" key={item.claim}>
+                  <span className={`evidence-type type-${index}`}>{item.type}</span>
+                  <div>
+                    <strong>{item.claim}</strong>
+                    <p>{item.logic}</p>
+                    <div className="evidence-meta">
+                      <span>可信度 {item.confidence}%</span>
+                      <span>指标 {dashboard.metricCatalog.find((metric) => metric.id === item.metricId)?.name}</span>
+                      <span>{item.sourceIds.length} 个数据源</span>
+                    </div>
+                  </div>
+                  <button onClick={() => {
+                    setSelectedMetricId(item.metricId);
+                    document.getElementById("metrics")?.scrollIntoView({ behavior: "smooth" });
+                  }}>
+                    查证据
+                  </button>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <aside className="card push-card">
+            <div className="push-window">
+              <div className="push-window-head">
+                <span className="push-logo">R</span>
+                <div><strong>{dashboard.pushPreview.title}</strong><small>{dashboard.pushPreview.channel} · {dashboard.pushPreview.cadence}</small></div>
+                <i>•••</i>
+              </div>
+              <p>{dashboard.pushPreview.summary}</p>
+              <div className="push-line"><span>动因</span>{dashboard.pushPreview.drivers}</div>
+              <div className="push-line action"><span>行动</span>{dashboard.pushPreview.action}</div>
+              <button onClick={copySummary}>{copied ? "已复制" : "复制并发送"}</button>
+            </div>
+            <div className="push-settings">
+              <span className="eyebrow">PUSH PREVIEW</span>
+              <h2>自动推送预览</h2>
+              <dl>
+                <div><dt>接收人</dt><dd>{dashboard.pushPreview.audience}</dd></div>
+                <div><dt>触发方式</dt><dd>每日定时 + 异常即时</dd></div>
+                <div><dt>数据保护</dt><dd>延迟数据自动标记“待确认”</dd></div>
+              </dl>
+            </div>
+          </aside>
+        </section>
+
+        <section className="module-section">
+          <article className="card rules-card">
+            <div className="module-head">
+              <div>
+                <span className="eyebrow">ALERT AUTOMATION</span>
+                <h2>本期已触发的监控规则</h2>
+              </div>
+              <span className="alert-count">{dashboard.alertRules.length} 条已触发</span>
+            </div>
+            <div className="rule-grid">
+              {dashboard.alertRules.map((rule, index) => (
+                <div className="rule-item" key={rule.name}>
+                  <span className={`rule-number rule-${index}`}>0{index + 1}</span>
+                  <div>
+                    <strong>{rule.name}</strong>
+                    <p>{rule.metric} · {rule.condition}</p>
+                    <small>当前：{rule.actual}</small>
+                  </div>
+                  <div className="rule-action">
+                    <span>{rule.owner}</span>
+                    <p>{rule.action}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
         <footer>
-          <div><span className="live-dot" /> 数据管道最近运行：2026-07-25 09:31</div>
+          <div><span className="live-dot" /> 数据管道最近运行：2026-07-25 09:31 · 143,669 行已校验</div>
           <p>本页面使用模拟业务数据，仅用于能力展示与方案验证。</p>
         </footer>
       </section>
