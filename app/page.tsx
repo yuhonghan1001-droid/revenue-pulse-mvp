@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dashboard from "./data/dashboard.json";
 
 type DimensionKey = "industry" | "product" | "traffic";
@@ -11,6 +11,40 @@ type BreakdownItem = {
   change: number;
   changePct: number | null;
   share: number;
+};
+type RuntimeBrief = {
+  as_of: string;
+  generated_at: string;
+  engine: "openai" | "rules" | "rules_fallback";
+  skill_version: string;
+  headline: string;
+  summary: string;
+  drivers_narrative: string;
+  action_narrative: string;
+  risk_note: string;
+  data_quality: {
+    status: "pass" | "warn" | "fail";
+  };
+  metrics: {
+    actual_net_revenue: { value: number };
+    yoy_growth_pct: { value: number };
+    budget_attainment_pct: { value: number };
+    month_end_forecast: { value: number };
+    forecast_vs_budget_pct: { value: number };
+  };
+  actions: Array<{
+    action: string;
+    owner: string;
+    due_date: string;
+    trigger: string;
+  }>;
+};
+type RuntimeResponse = {
+  ok: boolean;
+  persisted: boolean;
+  aiConfigured: boolean;
+  storageConfigured: boolean;
+  brief: RuntimeBrief;
 };
 
 const dimensionLabels: Record<DimensionKey, string> = {
@@ -196,6 +230,25 @@ export default function Home() {
   const [selectedLensId, setSelectedLensId] = useState(
     dashboard.revenueModel.lenses[0].id,
   );
+  const [runtime, setRuntime] = useState<RuntimeResponse | null>(null);
+  const [runtimeLoading, setRuntimeLoading] = useState(true);
+
+  const refreshRuntime = async () => {
+    setRuntimeLoading(true);
+    try {
+      const response = await fetch("/api/analysis/latest", { cache: "no-store" });
+      if (!response.ok) throw new Error("无法读取最新分析");
+      setRuntime((await response.json()) as RuntimeResponse);
+    } catch {
+      setRuntime(null);
+    } finally {
+      setRuntimeLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshRuntime();
+  }, []);
 
   const currentBreakdown = dashboard.breakdowns[dimension] as BreakdownItem[];
   const selected =
@@ -204,7 +257,30 @@ export default function Home() {
   const maxAbsChange = Math.max(
     ...currentBreakdown.map((item) => Math.abs(item.change)),
   );
-  const forecastAhead = dashboard.kpis.forecastVsBudget >= 0;
+  const liveBrief = runtime?.brief;
+  const liveMtdRevenue =
+    liveBrief?.metrics.actual_net_revenue.value ?? dashboard.kpis.mtdRevenue;
+  const liveYoy =
+    liveBrief?.metrics.yoy_growth_pct.value ?? dashboard.kpis.yoy;
+  const liveBudgetAttainment =
+    liveBrief?.metrics.budget_attainment_pct.value ??
+    dashboard.kpis.budgetAttainment;
+  const liveForecast =
+    liveBrief?.metrics.month_end_forecast.value ?? dashboard.kpis.forecast;
+  const liveForecastGap =
+    liveBrief?.metrics.forecast_vs_budget_pct.value ??
+    dashboard.kpis.forecastVsBudget;
+  const forecastAhead = liveForecastGap >= 0;
+  const dataAsOf = liveBrief?.as_of.slice(0, 10) ?? dashboard.meta.asOf;
+  const latestRunLabel = liveBrief
+    ? new Date(liveBrief.generated_at).toLocaleString("zh-CN", {
+        hour12: false,
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "等待首次运行";
   const filteredSources = dashboard.sourceHealth.filter(
     (source) => healthFilter === "全部" || source.healthStatus === healthFilter,
   );
@@ -217,13 +293,21 @@ export default function Home() {
 
   const summaryText = useMemo(
     () =>
-      [
-        dashboard.executiveSummary.headline,
-        ...dashboard.executiveSummary.facts,
-        `经营判断：${dashboard.executiveSummary.judgement}`,
-        `待确认：${dashboard.executiveSummary.toVerify}`,
-      ].join("\n"),
-    [],
+      liveBrief
+        ? [
+            liveBrief.headline,
+            liveBrief.summary,
+            `经营判断：${liveBrief.drivers_narrative}`,
+            `行动：${liveBrief.action_narrative}`,
+            `数据风险：${liveBrief.risk_note}`,
+          ].join("\n")
+        : [
+            dashboard.executiveSummary.headline,
+            ...dashboard.executiveSummary.facts,
+            `经营判断：${dashboard.executiveSummary.judgement}`,
+            `待确认：${dashboard.executiveSummary.toVerify}`,
+          ].join("\n"),
+    [liveBrief],
   );
 
   const copySummary = async () => {
@@ -266,7 +350,7 @@ export default function Home() {
               <h1>广告收入经营监控</h1>
               <span className="demo-badge">模拟数据 · MVP</span>
             </div>
-            <p>中国电商广告业务 · 数据截至 2026 年 7 月 25 日</p>
+            <p>中国电商广告业务 · 数据截至 {dataAsOf}</p>
           </div>
           <div className="header-actions">
             <button className="ghost-button" onClick={() => setShowDataPanel(true)}>
@@ -281,7 +365,11 @@ export default function Home() {
         <div className="attention-strip">
           <div>
             <span className="attention-icon">!</span>
-            <p><strong>今日需关注：</strong>搜索流量收入连续 4 日低于基线，预计影响本月收入 0.18 亿。</p>
+            <p>
+              <strong>今日需关注：</strong>
+              {liveBrief?.actions[0]?.action ??
+                "搜索流量收入连续 4 日低于基线，预计影响本月收入 0.18 亿。"}
+            </p>
           </div>
           <button onClick={() => document.getElementById("alerts")?.scrollIntoView({ behavior: "smooth" })}>
             查看 3 项异常 →
@@ -291,23 +379,23 @@ export default function Home() {
         <section className="kpi-grid" id="overview">
           <article className="kpi-card featured">
             <div className="kpi-head"><span>本月累计收入</span><i>经营净收入</i></div>
-            <strong>{dashboard.kpis.mtdRevenue.toFixed(2)}<small>亿</small></strong>
+            <strong>{liveMtdRevenue.toFixed(2)}<small>亿</small></strong>
             <div className="kpi-foot positive">
-              <span>同比 +{dashboard.kpis.yoy}%</span>
+              <span>同比 {liveYoy > 0 ? "+" : ""}{liveYoy}%</span>
               <em>较上月同期 +0.12 亿</em>
             </div>
           </article>
           <article className="kpi-card">
             <div className="kpi-head"><span>预算完成率</span><i>时间进度 80.6%</i></div>
-            <strong>{dashboard.kpis.budgetAttainment.toFixed(1)}<small>%</small></strong>
-            <div className="progress"><span style={{ width: `${Math.min(dashboard.kpis.budgetAttainment, 100)}%` }} /></div>
+            <strong>{liveBudgetAttainment.toFixed(1)}<small>%</small></strong>
+            <div className="progress"><span style={{ width: `${Math.min(liveBudgetAttainment, 100)}%` }} /></div>
             <div className="kpi-foot"><em>月度预算 {dashboard.kpis.monthlyBudget.toFixed(2)} 亿</em></div>
           </article>
           <article className="kpi-card">
             <div className="kpi-head"><span>月底预测</span><i>近 7 日 Run-rate</i></div>
-            <strong>{dashboard.kpis.forecast.toFixed(2)}<small>亿</small></strong>
+            <strong>{liveForecast.toFixed(2)}<small>亿</small></strong>
             <div className={`kpi-foot ${forecastAhead ? "positive" : "negative"}`}>
-              <span>较预算 {dashboard.kpis.forecastVsBudget > 0 ? "+" : ""}{dashboard.kpis.forecastVsBudget}%</span>
+              <span>较预算 {liveForecastGap > 0 ? "+" : ""}{liveForecastGap}%</span>
               <em>置信区间 ±0.08 亿</em>
             </div>
           </article>
@@ -728,9 +816,9 @@ export default function Home() {
                 <div><strong>{dashboard.pushPreview.title}</strong><small>{dashboard.pushPreview.channel} · {dashboard.pushPreview.cadence}</small></div>
                 <i>•••</i>
               </div>
-              <p>{dashboard.pushPreview.summary}</p>
-              <div className="push-line"><span>动因</span>{dashboard.pushPreview.drivers}</div>
-              <div className="push-line action"><span>行动</span>{dashboard.pushPreview.action}</div>
+              <p>{liveBrief?.summary ?? dashboard.pushPreview.summary}</p>
+              <div className="push-line"><span>动因</span>{liveBrief?.drivers_narrative ?? dashboard.pushPreview.drivers}</div>
+              <div className="push-line action"><span>行动</span>{liveBrief?.action_narrative ?? dashboard.pushPreview.action}</div>
               <button onClick={copySummary}>{copied ? "已复制" : "复制并发送"}</button>
             </div>
             <div className="push-settings">
@@ -741,7 +829,27 @@ export default function Home() {
                 <div><dt>触发方式</dt><dd>每日定时 + 异常即时</dd></div>
                 <div><dt>数据保护</dt><dd>延迟数据自动标记“待确认”</dd></div>
                 <div><dt>接入状态</dt><dd><span className="connected-dot" /> 飞书个人私信已连接</dd></div>
+                <div><dt>收入 Skill</dt><dd><span className="connected-dot" /> 已接入 · v{liveBrief?.skill_version ?? "1.0.0"}</dd></div>
+                <div>
+                  <dt>执行引擎</dt>
+                  <dd>
+                    {runtimeLoading
+                      ? "正在读取"
+                      : liveBrief?.engine === "openai"
+                        ? "OpenAI 增强"
+                        : "可审计规则引擎"}
+                  </dd>
+                </div>
+                <div><dt>最近运行</dt><dd>{latestRunLabel}</dd></div>
+                <div><dt>版本存档</dt><dd>{runtime?.persisted ? "已保存数据快照与分析结果" : "等待首次定时运行"}</dd></div>
               </dl>
+              <button
+                className="skill-runtime-button"
+                onClick={() => void refreshRuntime()}
+                disabled={runtimeLoading}
+              >
+                {runtimeLoading ? "正在加载…" : "读取最新 Skill 结果"}
+              </button>
             </div>
           </aside>
         </section>
@@ -775,7 +883,7 @@ export default function Home() {
         </section>
 
         <footer>
-          <div><span className="live-dot" /> 数据管道最近运行：2026-07-25 09:31 · 143,669 行已校验</div>
+          <div><span className="live-dot" /> 数据管道最近运行：{latestRunLabel} · 143,669 行已校验</div>
           <p>本页面使用模拟业务数据，仅用于能力展示与方案验证。</p>
         </footer>
       </section>

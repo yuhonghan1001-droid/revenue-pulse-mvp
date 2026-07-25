@@ -490,6 +490,13 @@ footer p { margin: 0; }
   display: inline-block; width: 6px; height: 6px; margin-right: 5px;
   border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft);
 }
+.skill-runtime-button {
+  width: 100%; margin-top: 12px; padding: 9px 12px; border: 1px solid #cad3e2;
+  border-radius: 7px; color: #365274; background: #f8fafc; cursor: pointer;
+  font-size: 8px; font-weight: 750;
+}
+.skill-runtime-button:hover { border-color: var(--blue); color: var(--blue); }
+.skill-runtime-button:disabled { opacity: .55; cursor: wait; }
 
 .rules-card { padding: 22px; }
 .rule-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 17px; }

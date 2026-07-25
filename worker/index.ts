@@ -2,15 +2,23 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import dashboard from "../app/data/dashboard.json";
+import {
+  createRevenueSkillPreview,
+  getLatestRevenueSkillRun,
+  runRevenueSkill,
+  type RevenueSkillBrief,
+  type RevenueSkillEnv,
+} from "./revenue-skill";
 
-interface Env {
+interface Env extends RevenueSkillEnv {
   ASSETS: Fetcher;
-  DB?: D1Database;
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
   FEISHU_PUSH_TOKEN?: string;
   FEISHU_RECIPIENT_OPEN_ID?: string;
   FEISHU_WEBHOOK_URL?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -35,9 +43,10 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function buildFeishuCard(origin: string) {
+function buildFeishuCard(origin: string, brief: RevenueSkillBrief) {
   const preview = dashboard.pushPreview;
-  const kpis = dashboard.kpis;
+  const kpis = brief.metrics;
+  const forecastGap = kpis.forecast_vs_budget_pct.value;
 
   return {
     config: {
@@ -45,7 +54,7 @@ function buildFeishuCard(origin: string) {
       enable_forward: true,
     },
     header: {
-      template: kpis.forecastVsBudget < 0 ? "orange" : "blue",
+      template: forecastGap < 0 ? "orange" : "blue",
       title: {
         tag: "plain_text",
         content: preview.title,
@@ -56,7 +65,7 @@ function buildFeishuCard(origin: string) {
         tag: "div",
         text: {
           tag: "lark_md",
-          content: `**经营结论**\n${preview.summary}`,
+          content: `**经营结论**\n${brief.summary}`,
         },
       },
       {
@@ -69,28 +78,28 @@ function buildFeishuCard(origin: string) {
             is_short: true,
             text: {
               tag: "lark_md",
-              content: `**累计收入**\n${kpis.mtdRevenue.toFixed(2)} 亿`,
+              content: `**累计收入**\n${kpis.actual_net_revenue.value.toFixed(2)} 亿`,
             },
           },
           {
             is_short: true,
             text: {
               tag: "lark_md",
-              content: `**同比**\n+${kpis.yoy}%`,
+              content: `**同比**\n${kpis.yoy_growth_pct.value > 0 ? "+" : ""}${kpis.yoy_growth_pct.value}%`,
             },
           },
           {
             is_short: true,
             text: {
               tag: "lark_md",
-              content: `**月底预测**\n${kpis.forecast.toFixed(2)} 亿`,
+              content: `**月底预测**\n${kpis.month_end_forecast.value.toFixed(2)} 亿`,
             },
           },
           {
             is_short: true,
             text: {
               tag: "lark_md",
-              content: `**较预算**\n${kpis.forecastVsBudget}%`,
+              content: `**较预算**\n${forecastGap > 0 ? "+" : ""}${forecastGap}%`,
             },
           },
         ],
@@ -99,14 +108,14 @@ function buildFeishuCard(origin: string) {
         tag: "div",
         text: {
           tag: "lark_md",
-          content: `**动因**\n${preview.drivers}`,
+          content: `**动因**\n${brief.drivers_narrative}`,
         },
       },
       {
         tag: "div",
         text: {
           tag: "lark_md",
-          content: `**今日行动**\n${preview.action}`,
+          content: `**今日行动**\n${brief.action_narrative}`,
         },
       },
       {
@@ -114,7 +123,7 @@ function buildFeishuCard(origin: string) {
         elements: [
           {
             tag: "plain_text",
-            content: `数据健康度 ${dashboard.healthSummary.averageScore} 分 · ${dashboard.healthSummary.warning} 个数据源需关注`,
+            content: `数据状态 ${brief.data_quality.status.toUpperCase()} · Skill ${brief.skill_version} · ${brief.engine === "openai" ? "AI 增强" : "规则引擎"}`,
           },
         ],
       },
@@ -155,7 +164,7 @@ async function getTenantAccessToken(env: Env) {
   return result.tenant_access_token;
 }
 
-async function pushDirectMessage(origin: string, env: Env) {
+async function pushDirectMessage(origin: string, env: Env, brief: RevenueSkillBrief) {
   const accessToken = await getTenantAccessToken(env);
   const response = await fetch(
     "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
@@ -168,7 +177,7 @@ async function pushDirectMessage(origin: string, env: Env) {
       body: JSON.stringify({
         receive_id: env.FEISHU_RECIPIENT_OPEN_ID,
         msg_type: "interactive",
-        content: JSON.stringify(buildFeishuCard(origin)),
+        content: JSON.stringify(buildFeishuCard(origin, brief)),
       }),
     },
   );
@@ -181,13 +190,13 @@ async function pushDirectMessage(origin: string, env: Env) {
   }
 }
 
-async function pushGroupMessage(origin: string, env: Env) {
+async function pushGroupMessage(origin: string, env: Env, brief: RevenueSkillBrief) {
   const response = await fetch(env.FEISHU_WEBHOOK_URL!, {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({
       msg_type: "interactive",
-      card: buildFeishuCard(origin),
+      card: buildFeishuCard(origin, brief),
     }),
   });
   const result = await response.json().catch(() => null) as
@@ -207,25 +216,46 @@ function hasDirectMessageConfig(env: Env) {
   return Boolean(env.FEISHU_APP_ID && env.FEISHU_APP_SECRET && env.FEISHU_RECIPIENT_OPEN_ID);
 }
 
-async function pushToFeishu(request: Request, env: Env) {
+function isAuthorized(request: Request, env: Env) {
+  return Boolean(
+    env.FEISHU_PUSH_TOKEN &&
+      request.headers.get("x-revenue-push-token") === env.FEISHU_PUSH_TOKEN,
+  );
+}
+
+async function deliverToFeishu(
+  origin: string,
+  env: Env,
+  brief: RevenueSkillBrief,
+) {
   const directMessageConfigured = hasDirectMessageConfig(env);
-  if (!env.FEISHU_PUSH_TOKEN || (!directMessageConfigured && !env.FEISHU_WEBHOOK_URL)) {
-    return jsonResponse({ ok: false, error: "Feishu push is not configured." }, 503);
+  if (!directMessageConfigured && !env.FEISHU_WEBHOOK_URL) {
+    throw new Error("Feishu push is not configured.");
   }
 
-  // Use an app-specific header because the hosting layer reserves
-  // `Authorization` for its own sign-in and bypass mechanisms.
-  if (request.headers.get("x-revenue-push-token") !== env.FEISHU_PUSH_TOKEN) {
+  if (directMessageConfigured) {
+    await pushDirectMessage(origin, env, brief);
+  } else {
+    await pushGroupMessage(origin, env, brief);
+  }
+  return directMessageConfigured ? "飞书个人私信" : dashboard.pushPreview.channel;
+}
+
+async function pushToFeishu(request: Request, env: Env) {
+  if (!isAuthorized(request, env)) {
     return jsonResponse({ ok: false, error: "Unauthorized." }, 401);
   }
 
   const origin = new URL(request.url).origin;
   try {
-    if (directMessageConfigured) {
-      await pushDirectMessage(origin, env);
-    } else {
-      await pushGroupMessage(origin, env);
-    }
+    const brief = await runRevenueSkill(env);
+    const channel = await deliverToFeishu(origin, env, brief);
+    return jsonResponse({
+      ok: true,
+      channel,
+      title: dashboard.pushPreview.title,
+      brief,
+    });
   } catch (error) {
     return jsonResponse(
       {
@@ -235,12 +265,58 @@ async function pushToFeishu(request: Request, env: Env) {
       502,
     );
   }
+}
 
-  return jsonResponse({
-    ok: true,
-    channel: directMessageConfigured ? "飞书个人私信" : dashboard.pushPreview.channel,
-    title: dashboard.pushPreview.title,
-  });
+async function runAnalysis(request: Request, env: Env) {
+  if (!isAuthorized(request, env)) {
+    return jsonResponse({ ok: false, error: "Unauthorized." }, 401);
+  }
+
+  const payload = await request.json().catch(() => ({})) as {
+    snapshot?: unknown;
+    push?: boolean;
+  };
+  try {
+    const brief = await runRevenueSkill(env, payload.snapshot);
+    let channel: string | null = null;
+    if (payload.push) {
+      channel = await deliverToFeishu(new URL(request.url).origin, env, brief);
+    }
+    return jsonResponse({
+      ok: true,
+      channel,
+      brief,
+    });
+  } catch (error) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : "Revenue Skill execution failed.",
+      },
+      500,
+    );
+  }
+}
+
+async function latestAnalysis(env: Env) {
+  try {
+    const stored = await getLatestRevenueSkillRun(env);
+    return jsonResponse({
+      ok: true,
+      persisted: Boolean(stored),
+      aiConfigured: Boolean(env.OPENAI_API_KEY),
+      storageConfigured: Boolean(env.DB),
+      brief: stored ?? createRevenueSkillPreview(),
+    });
+  } catch {
+    return jsonResponse({
+      ok: true,
+      persisted: false,
+      aiConfigured: Boolean(env.OPENAI_API_KEY),
+      storageConfigured: false,
+      brief: createRevenueSkillPreview(),
+    });
+  }
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -258,6 +334,20 @@ const worker = {
         return jsonResponse({ ok: false, error: "Method not allowed." }, 405);
       }
       return pushToFeishu(request, env);
+    }
+
+    if (url.pathname === "/api/analysis/run") {
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "Method not allowed." }, 405);
+      }
+      return runAnalysis(request, env);
+    }
+
+    if (url.pathname === "/api/analysis/latest") {
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "Method not allowed." }, 405);
+      }
+      return latestAnalysis(env);
     }
 
     if (url.pathname === "/_vinext/image") {

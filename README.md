@@ -33,6 +33,55 @@ Revenue Pulse 将取数、拼接、质量检查和经营分析串成一个可重
 - 服务端飞书机器人推送接口（默认个人私信，群 Webhook 作为备用；所有凭证仅通过托管环境密钥注入）
 - 主键重复、维表匹配、财务对账、及时性和已知数据缺口检查
 
+## AI Skill
+
+项目包含可复用的 [`analyze-ecommerce-ad-revenue`](skills/analyze-ecommerce-ad-revenue/SKILL.md) Skill，将财务 BP 的收入分析方法从代码中进一步沉淀为显式的 AI 工作规范。
+
+Skill 覆盖：
+
+- 实际、同比、预算和预测的统一指标口径；
+- 多源数据的及时性、完整性、唯一性、关联和财务对账门槛；
+- 流量变现、商家需求、计费到确收三棵收入驱动树；
+- 事实、预测、判断和风险的证据链；
+- 面向财务 BP、业务负责人、财务老板和管理层的分层输出；
+- 业务反馈转化为新规则、评测案例和回归验证的迭代机制。
+
+结构化经营简报可通过 Skill 内置校验器检查：
+
+```bash
+python3 skills/analyze-ecommerce-ad-revenue/scripts/validate_brief.py path/to/brief.json
+```
+
+Skill 只有在新增案例通过且历史案例无回退时，才将规则变化视为能力升级。这样可以区分“修改了一段提示词”和“形成了可验证的新财务分析能力”。
+
+### 运行时接入
+
+Skill 已接入线上执行链路：
+
+```text
+24 源数据管道
+    → dashboard.json 最新快照
+    → 数据质量门槛
+    → 收入分析 Skill
+    → 保存快照与分析版本
+    → 看板读取最新结果
+    → 按需推送飞书个人私信
+```
+
+- `POST /api/analysis/run`：接收最新快照并执行 Skill，需要服务端令牌。
+- `GET /api/analysis/latest`：读取最近一次已经保存的分析结果。
+- `data_pipeline/publish_snapshot.py`：把 Python 管道的最新结果提交给线上执行器。
+- `.github/workflows/revenue-skill-daily.yml`：工作日北京时间 09:45 自动运行，也支持在 GitHub Actions 手动运行。
+
+定时任务需要在 GitHub 仓库 Actions secrets 中配置 `REVENUE_PUSH_TOKEN`，其值应与托管环境中的同名密钥一致。
+
+线上环境可以配置：
+
+- `OPENAI_API_KEY`：可选；配置后由模型按照完整 Skill 生成管理层语言，必须作为密钥保存。
+- `OPENAI_MODEL`：可选；默认 `gpt-5.6-sol`。
+
+未配置模型密钥时，系统使用可审计规则引擎生成简报，指标计算、质量门槛、版本保存和飞书推送仍然正常运行。AI 只增强管理层语言，不允许修改受治理指标。
+
 ## 数据管道
 
 ```text
@@ -92,6 +141,8 @@ data_pipeline/
   generate_demo_data.py        模拟数据生成
   run_pipeline.py              拼接、计算与质量检查
   data/raw/                    模拟源数据
+skills/
+  analyze-ecommerce-ad-revenue/  可复用、可评测的财务 BP 收入分析 Skill
 ```
 
 ## 接入真实数据
