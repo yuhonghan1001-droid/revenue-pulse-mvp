@@ -1,98 +1,105 @@
-# vinext-starter
+# Revenue Pulse｜广告收入经营罗盘
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+一个面向电商广告业务的经营分析 MVP：用代码拼接 24 个数据集，完成收入监控、月底预测、动因拆解、异常识别和管理层摘要。
 
-## Prerequisites
+[在线演示](https://revenue-pulse-mvp.happynamely.chatgpt.site)
 
-- Node.js `>=22.13.0`
+> 本项目只包含程序生成的模拟数据，不包含任何企业真实收入、商家或财务数据。
 
-## Quick Start
+## 解决什么问题
+
+财务 BP 经常需要回答：
+
+- 截至今天，本月广告收入是多少？
+- 与同比、预算和上一版预测相比表现如何？
+- 月底大约会达到多少？
+- 增长或下降发生在哪些行业、广告产品和流量场景？
+- 哪些变化是数据事实，哪些是业务判断，哪些仍需业务确认？
+
+Revenue Pulse 将取数、拼接、质量检查和经营分析串成一个可重复运行的流程。
+
+## 功能
+
+- 本月累计收入、同比、预算完成率和月底预测
+- 实际、预测和预算累计趋势
+- 行业、广告产品和流量场景三类动因下钻
+- 异常与增长机会清单
+- 可复制的管理层经营摘要
+- 24 个数据源的数据血缘、负责人、粒度、关联键和更新状态
+- 主键重复、维表匹配、财务对账和及时性检查
+
+## 数据管道
+
+```text
+24 个原始数据集
+        ↓
+数据源注册表与字段标准化
+        ↓
+主键、复合键和粒度检查
+        ↓
+商家 / 产品 / 流量 / 日期维度关联
+        ↓
+经营口径与财务确收对账
+        ↓
+指标、预测、动因和异常计算
+        ↓
+dashboard.json → 经营驾驶舱
+```
+
+本仓库包含 24 个模拟源文件，覆盖：
+
+- 商家主数据、行业、分层、区域、客户经理和生命周期
+- 广告产品、定价和流量场景
+- 日历、营销活动和策略事件
+- 收入、曝光、点击、转化、流量库存和商家预算
+- 计费确收、返点、退款、预测基线和月度预算
+- 数据源更新时间与 SLA
+
+数据源定义位于 `data_pipeline/config/source_registry.json`。真实接入时，可以把 CSV 读取替换为数据仓库查询、API 或自动下载适配器，保留后续的关联、检查和输出逻辑。
+
+## 本地运行
+
+要求 Node.js 22.13+ 和 Python 3.10+。
 
 ```bash
-npm install
-npm run dev
-npm run build
+pnpm install
+python3 data_pipeline/generate_demo_data.py
+python3 data_pipeline/run_pipeline.py
+pnpm run dev
 ```
 
-This starter does not use `wrangler.jsonc`.
+打开 `http://localhost:3000`。
 
-## Included Shape
+生成生产版本：
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+pnpm run build
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## 目录
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+```text
+app/                         驾驶舱页面与前端数据
+data_pipeline/
+  config/source_registry.json  24 个数据源注册表
+  generate_demo_data.py        模拟数据生成
+  run_pipeline.py              拼接、计算与质量检查
+  data/raw/                    模拟源数据
+```
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## 接入真实数据
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+建议按以下顺序替换：
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+1. 保持 `source_registry.json` 中的数据源 ID 稳定；
+2. 将模拟 CSV 替换为真实查询或文件适配器；
+3. 对齐商家、产品、流量和日期关联键；
+4. 确认经营收入、计费收入与财务确收的差异；
+5. 与历史人工报表并行运行两到三个周期；
+6. 对账稳定后，再启用自动推送。
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+涉及真实财务数据时，请自行增加权限控制、脱敏、审计日志和密钥管理。
 
-## Useful Commands
+## License
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+[MIT](LICENSE)
