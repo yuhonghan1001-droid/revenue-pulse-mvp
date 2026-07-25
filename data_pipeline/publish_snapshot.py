@@ -82,7 +82,12 @@ def publish(url: str, token: str, snapshot: dict, should_push: bool) -> dict:
         ).encode("utf-8"),
         method="POST",
         headers={
+            "accept": "application/json",
             "content-type": "application/json; charset=utf-8",
+            "user-agent": (
+                "RevenuePulse-GitHubActions/1.0 "
+                "(+https://github.com/yuhonghan1001-droid/revenue-pulse-mvp)"
+            ),
             "x-revenue-push-token": token,
         },
     )
