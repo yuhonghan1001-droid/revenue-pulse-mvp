@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+const v1Baseline = JSON.parse(
+  await readFile(new URL("./fixtures/v1-baseline.json", import.meta.url), "utf8"),
+);
+
 async function loadWorker() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
@@ -9,36 +13,40 @@ async function loadWorker() {
   return worker;
 }
 
-async function render() {
+function workerEnv(overrides = {}) {
+  return {
+    ASSETS: {
+      fetch: async () => new Response("Not found", { status: 404 }),
+    },
+    ...overrides,
+  };
+}
+
+const executionContext = {
+  waitUntil() {},
+  passThroughOnException() {},
+};
+
+async function render(overrides = {}) {
   const worker = await loadWorker();
   return worker.fetch(
     new Request("https://revenue-pulse.example/", {
       headers: { accept: "text/html", host: "revenue-pulse.example" },
     }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    workerEnv(overrides),
+    executionContext,
   );
 }
 
 test("server-renders the Revenue Pulse product", async () => {
-  const response = await render();
+  const response = await render({ ENABLE_AD_REVENUE_V3: "false" });
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /广告收入经营罗盘/);
-  assert.match(html, /财务 BP 收入分析框架/);
-  assert.match(html, /个数据源健康中心/);
-  assert.match(html, /指标口径中心/);
-  assert.match(html, /经营结论证据链/);
-  assert.match(html, /自动推送预览/);
+  for (const heading of v1Baseline.page.headings) {
+    assert.ok(html.includes(heading), `missing v1 page heading: ${heading}`);
+  }
   assert.match(html, /revenue-pulse\.example\/og\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/i);
 });
@@ -48,15 +56,40 @@ test("publishes governed dashboard data for every module", async () => {
     await readFile(new URL("../app/data/dashboard.json", import.meta.url), "utf8"),
   );
 
-  assert.equal(dashboard.meta.sourceCount, 24);
-  assert.equal(dashboard.sourceHealth.length, 24);
-  assert.equal(dashboard.healthSummary.healthy, 23);
-  assert.equal(dashboard.healthSummary.warning, 1);
-  assert.equal(dashboard.metricCatalog.length, 8);
-  assert.equal(dashboard.evidenceChain.length, 4);
-  assert.equal(dashboard.alertRules.length, 3);
-  assert.equal(dashboard.revenueModel.lenses.length, 3);
-  assert.equal(dashboard.revenueModel.knowledgeGaps.length, 3);
+  assert.deepEqual(
+    {
+      asOf: dashboard.meta.asOf,
+      sourceCount: dashboard.meta.sourceCount,
+      factRowCount: dashboard.meta.factRowCount,
+      demo: dashboard.meta.demo,
+    },
+    v1Baseline.dashboard.meta,
+  );
+  assert.deepEqual(
+    {
+      mtdRevenue: dashboard.kpis.mtdRevenue,
+      yoy: dashboard.kpis.yoy,
+      forecast: dashboard.kpis.forecast,
+      dataHealth: dashboard.kpis.dataHealth,
+    },
+    v1Baseline.dashboard.kpis,
+  );
+  assert.deepEqual(dashboard.healthSummary, v1Baseline.dashboard.healthSummary);
+  assert.deepEqual(
+    {
+      trend: dashboard.trend.length,
+      industries: dashboard.breakdowns.industry.length,
+      products: dashboard.breakdowns.product.length,
+      traffic: dashboard.breakdowns.traffic.length,
+      sourceHealth: dashboard.sourceHealth.length,
+      metricCatalog: dashboard.metricCatalog.length,
+      evidenceChain: dashboard.evidenceChain.length,
+      alertRules: dashboard.alertRules.length,
+      lenses: dashboard.revenueModel.lenses.length,
+      knowledgeGaps: dashboard.revenueModel.knowledgeGaps.length,
+    },
+    v1Baseline.dashboard.moduleCounts,
+  );
   assert.equal(
     dashboard.meta.timeProgressPct,
     Number(
@@ -67,7 +100,15 @@ test("publishes governed dashboard data for every module", async () => {
     ),
   );
   assert.match(dashboard.pushPreview.title, new RegExp(dashboard.meta.asOfLabel));
-  assert.equal(dashboard.meta.factRowCount, 27_408);
+  assert.deepEqual(
+    {
+      audience: dashboard.pushPreview.audience,
+      cadence: dashboard.pushPreview.cadence,
+      channel: dashboard.pushPreview.channel,
+      title: dashboard.pushPreview.title,
+    },
+    v1Baseline.feishuPreview,
+  );
 
   for (const metric of dashboard.metricCatalog) {
     assert.ok(metric.id);
@@ -79,16 +120,9 @@ test("publishes governed dashboard data for every module", async () => {
 test("serves one complete latest snapshot for every dashboard module", async () => {
   const worker = await loadWorker();
   const response = await worker.fetch(
-    new Request("https://revenue-pulse.example/api/analysis/latest"),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    new Request(`https://revenue-pulse.example${v1Baseline.api.latestPath}`),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "false" }),
+    executionContext,
   );
 
   assert.equal(response.status, 200);
@@ -103,4 +137,36 @@ test("serves one complete latest snapshot for every dashboard module", async () 
   );
   assert.ok(payload.snapshot.metricCatalog.length > 0);
   assert.ok(payload.snapshot.evidenceChain.length > 0);
+});
+
+test("keeps v3 dark by default and exposes only the reviewed scaffold when enabled", async () => {
+  const worker = await loadWorker();
+  const request = () =>
+    new Request(`https://revenue-pulse.example${v1Baseline.api.v3StatusPath}`);
+
+  const defaultResponse = await worker.fetch(
+    request(),
+    workerEnv(),
+    executionContext,
+  );
+  assert.equal(defaultResponse.status, 404);
+
+  const disabledResponse = await worker.fetch(
+    request(),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "false" }),
+    executionContext,
+  );
+  assert.equal(disabledResponse.status, 404);
+
+  const enabledResponse = await worker.fetch(
+    request(),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(enabledResponse.status, 200);
+  assert.deepEqual(await enabledResponse.json(), {
+    ok: true,
+    version: "v3",
+    state: "scaffolded",
+  });
 });

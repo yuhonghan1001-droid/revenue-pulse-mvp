@@ -9,9 +9,11 @@ import {
   type RevenueSkillBrief,
   type RevenueSkillEnv,
 } from "./revenue-skill";
+import { isAdRevenueV3Enabled } from "./v3/feature-flags";
 
 interface Env extends RevenueSkillEnv {
   ASSETS: Fetcher;
+  ENABLE_AD_REVENUE_V3?: string;
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
   FEISHU_PUSH_TOKEN?: string;
@@ -336,6 +338,17 @@ async function latestAnalysis(env: Env) {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/v3/status") {
+      if (!isAdRevenueV3Enabled(env.ENABLE_AD_REVENUE_V3)) {
+        return new Response("Not found", { status: 404 });
+      }
+      return jsonResponse({
+        ok: true,
+        version: "v3",
+        state: "scaffolded",
+      });
+    }
 
     if (url.pathname === "/api/feishu/push") {
       if (request.method !== "POST") {

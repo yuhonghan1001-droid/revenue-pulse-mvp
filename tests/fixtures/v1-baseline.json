@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "v1-baseline-1",
+  "capturedOn": "2026-07-28",
+  "sourceCommit": "75d6ca3e1fd1bbeb71d2de8bda61c596933dcfcd",
+  "featureFlag": {
+    "name": "ENABLE_AD_REVENUE_V3",
+    "default": "false"
+  },
+  "page": {
+    "headings": [
+      "广告收入经营罗盘",
+      "财务 BP 收入分析框架",
+      "个数据源健康中心",
+      "指标口径中心",
+      "经营结论证据链",
+      "自动推送预览"
+    ]
+  },
+  "api": {
+    "latestPath": "/api/analysis/latest",
+    "v3StatusPath": "/api/v3/status"
+  },
+  "dashboard": {
+    "meta": {
+      "asOf": "2026-07-25",
+      "sourceCount": 24,
+      "factRowCount": 27408,
+      "demo": true
+    },
+    "kpis": {
+      "mtdRevenue": 2.36,
+      "yoy": 7.5,
+      "forecast": 2.94,
+      "dataHealth": 96
+    },
+    "healthSummary": {
+      "healthy": 23,
+      "warning": 1,
+      "blocked": 0,
+      "averageScore": 99,
+      "totalRows": 143669,
+      "joinSuccess": 100
+    },
+    "moduleCounts": {
+      "trend": 31,
+      "industries": 6,
+      "products": 4,
+      "traffic": 4,
+      "sourceHealth": 24,
+      "metricCatalog": 8,
+      "evidenceChain": 4,
+      "alertRules": 3,
+      "lenses": 3,
+      "knowledgeGaps": 3
+    }
+  },
+  "feishuPreview": {
+    "audience": "财务负责人、商业化负责人、行业运营负责人",
+    "cadence": "每日 09:45",
+    "channel": "飞书经营群",
+    "title": "广告收入 Daily Pulse｜7 月 25 日"
+  }
+}
