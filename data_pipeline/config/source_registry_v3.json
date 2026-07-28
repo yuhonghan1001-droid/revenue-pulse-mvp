@@ -1,0 +1,62 @@
+{
+  "contract_version": "3.0",
+  "classification": "demo",
+  "timezone": "Asia/Shanghai",
+  "sources": [
+    {
+      "source_id": "ad_operations_v3",
+      "display_label": "广告经营与交付",
+      "path": "data/v3/ad_operations.csv",
+      "roles": ["ad_revenue", "ad_delivery"],
+      "time_grain": "day",
+      "dimension_grain": ["ad_format", "traffic_scene", "category", "advertiser_tier"],
+      "primary_key": ["date", "ad_format", "traffic_scene", "category", "advertiser_tier"],
+      "currency": "CNY",
+      "unit": "minor-free"
+    },
+    {
+      "source_id": "commerce_v3",
+      "display_label": "大盘交易",
+      "path": "data/v3/commerce.csv",
+      "roles": ["commerce"],
+      "time_grain": "day",
+      "dimension_grain": ["traffic_scene", "category"],
+      "primary_key": ["date", "traffic_scene", "category"],
+      "currency": "CNY",
+      "unit": "minor-free"
+    },
+    {
+      "source_id": "advertiser_health_v3",
+      "display_label": "广告主健康",
+      "path": "data/v3/advertiser_health.csv",
+      "roles": ["ad_attribution", "advertiser_status"],
+      "time_grain": "month",
+      "dimension_grain": ["advertiser_tier"],
+      "primary_key": ["period", "advertiser_tier"],
+      "currency": "CNY",
+      "unit": "minor-free"
+    },
+    {
+      "source_id": "user_experience_v3",
+      "display_label": "用户体验护栏",
+      "path": "data/v3/user_experience.csv",
+      "roles": ["user_behavior"],
+      "time_grain": "day",
+      "dimension_grain": ["traffic_scene"],
+      "primary_key": ["date", "traffic_scene"],
+      "currency": null,
+      "unit": "mixed"
+    },
+    {
+      "source_id": "strategy_events_v3",
+      "display_label": "策略事件",
+      "path": "data/v3/strategy_events.csv",
+      "roles": ["strategy_event"],
+      "time_grain": "event",
+      "dimension_grain": ["traffic_scene"],
+      "primary_key": ["event_id"],
+      "currency": null,
+      "unit": "event"
+    }
+  ]
+}

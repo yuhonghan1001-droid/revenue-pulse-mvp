@@ -1,0 +1,59 @@
+{
+  "contract_version": "3.0",
+  "classification": "demo",
+  "analysis_id": "rv3-fixture",
+  "as_of": "2026-07-27",
+  "basis": "operating_ad_revenue",
+  "basis_label": "广告经营收入",
+  "comparison_label": "上期",
+  "quality_status": "pass",
+  "metrics": {
+    "revenue": {
+      "value": 12600000,
+      "unit": "CNY",
+      "status": "available",
+      "source_ids": ["ad_revenue"]
+    }
+  },
+  "paths": [
+    {
+      "id": "traffic_monetization",
+      "status": "available"
+    }
+  ],
+  "contribution_bridges": [
+    {
+      "id": "traffic_base",
+      "status": "available",
+      "change": 2100000,
+      "contributions": [
+        {
+          "factor": "monetizable_vv",
+          "contribution": 900000
+        },
+        {
+          "factor": "ad_load",
+          "contribution": 700000
+        },
+        {
+          "factor": "ecpm",
+          "contribution": 500000
+        }
+      ],
+      "residual": 0
+    }
+  ],
+  "claims": [
+    {
+      "type": "fact",
+      "text": "本期广告经营收入较上期增长。",
+      "metric_ids": ["revenue"],
+      "source_ids": ["ad_revenue"]
+    }
+  ],
+  "known_gaps": [],
+  "limitations": [
+    "没有实验支持时不声明因果"
+  ],
+  "review_status": "draft"
+}

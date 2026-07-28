@@ -47,7 +47,7 @@ test("server-renders the Revenue Pulse product", async () => {
   for (const heading of v1Baseline.page.headings) {
     assert.ok(html.includes(heading), `missing v1 page heading: ${heading}`);
   }
-  assert.match(html, /revenue-pulse\.example\/og\.png/);
+  assert.match(html, /revenue-pulse\.example\/og-v3\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/i);
 });
 
@@ -139,7 +139,7 @@ test("serves one complete latest snapshot for every dashboard module", async () 
   assert.ok(payload.snapshot.evidenceChain.length > 0);
 });
 
-test("keeps v3 dark by default and exposes only the reviewed scaffold when enabled", async () => {
+test("keeps v3 dark by default and exposes the reviewed release when enabled", async () => {
   const worker = await loadWorker();
   const request = () =>
     new Request(`https://revenue-pulse.example${v1Baseline.api.v3StatusPath}`);
@@ -166,7 +166,136 @@ test("keeps v3 dark by default and exposes only the reviewed scaffold when enabl
   assert.equal(enabledResponse.status, 200);
   assert.deepEqual(await enabledResponse.json(), {
     ok: true,
-    version: "v3",
-    state: "scaffolded",
+    version: "3.0",
+    state: "ready",
   });
+});
+
+test("renders the public v3 demo without exposing a private workspace", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("https://revenue-pulse.example/v3", {
+      headers: { accept: "text/html", host: "revenue-pulse.example" },
+    }),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /公开模拟看板/);
+  assert.match(html, /流量变现路径/);
+  assert.match(html, /GMV 变现路径/);
+  assert.match(html, /广告主健康与体验护栏/);
+  assert.doesNotMatch(html, /monthly_budget|forecast_vs_budget/);
+});
+
+test("switches the homepage to v3 only when enabled and keeps workspace dark otherwise", async () => {
+  const worker = await loadWorker();
+  const enabledHome = await worker.fetch(
+    new Request("https://revenue-pulse.example/", {
+      headers: { accept: "text/html", host: "revenue-pulse.example" },
+    }),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(enabledHome.status, 200);
+  assert.match(await enabledHome.text(), /公开模拟看板/);
+
+  const disabledWorkspace = await worker.fetch(
+    new Request("https://revenue-pulse.example/workspace"),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "false" }),
+    executionContext,
+  );
+  assert.equal(disabledWorkspace.status, 404);
+
+  const disallowedWorkspace = await worker.fetch(
+    new Request("https://revenue-pulse.example/workspace", {
+      headers: { "oai-authenticated-user-email": "other@example.com" },
+    }),
+    workerEnv({
+      ENABLE_AD_REVENUE_V3: "true",
+      REVENUE_WORKSPACE_ALLOWED_EMAILS: "bp@example.com",
+    }),
+    executionContext,
+  );
+  assert.equal(disallowedWorkspace.status, 404);
+});
+
+test("public v3 API returns only the governed demo classification", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("https://revenue-pulse.example/api/v3/public/latest"),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.result.classification, "demo");
+  assert.equal(payload.result.contractVersion, "3.0");
+  assert.equal(payload.result.contributionBridges.length, 3);
+  assert.equal(payload.result.pathAvailability.length, 4);
+});
+
+test("private v3 analysis routes require an authenticated allowed user", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("https://revenue-pulse.example/api/v3/analyses/latest"),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(response.status, 401);
+
+  const noAllowlistResponse = await worker.fetch(
+    new Request("https://revenue-pulse.example/api/v3/analyses/latest", {
+      headers: { "oai-authenticated-user-email": "bp@example.com" },
+    }),
+    workerEnv({ ENABLE_AD_REVENUE_V3: "true" }),
+    executionContext,
+  );
+  assert.equal(noAllowlistResponse.status, 401);
+
+  const allowedResponse = await worker.fetch(
+    new Request("https://revenue-pulse.example/api/v3/analyses/latest", {
+      headers: { "oai-authenticated-user-email": "bp@example.com" },
+    }),
+    workerEnv({
+      ENABLE_AD_REVENUE_V3: "true",
+      REVENUE_WORKSPACE_ALLOWED_EMAILS: "bp@example.com",
+    }),
+    executionContext,
+  );
+  assert.equal(allowedResponse.status, 503);
+});
+
+test("v3 service automation accepts demo aggregates and rejects real data", async () => {
+  const worker = await loadWorker();
+  const snapshot = JSON.parse(
+    await readFile(new URL("../app/data/dashboard-v3.json", import.meta.url), "utf8"),
+  );
+  const env = workerEnv({
+    ENABLE_AD_REVENUE_V3: "true",
+    REVENUE_PUSH_TOKEN: "test-only-token",
+  });
+  const create = (input) =>
+    worker.fetch(
+      new Request("https://revenue-pulse.example/api/v3/analyses", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-revenue-push-token": "test-only-token",
+        },
+        body: JSON.stringify({ input }),
+      }),
+      env,
+      executionContext,
+    );
+  const demoResponse = await create(snapshot.input);
+  assert.equal(demoResponse.status, 201);
+  const demoPayload = await demoResponse.json();
+  assert.equal(demoPayload.result.classification, "demo");
+  assert.equal(demoPayload.persisted, false);
+
+  const realResponse = await create({ ...snapshot.input, classification: "real" });
+  assert.equal(realResponse.status, 403);
 });

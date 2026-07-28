@@ -1,0 +1,7 @@
+period,advertiser_tier,active_advertisers,prior_active_advertisers,retained_advertisers,actual_ad_spend,attributed_gmv
+comparison,头部,1600,1600,1312,7800000.0,39780000.0
+comparison,中腰部,2700,2700,2282,10200000.0,48450000.0
+comparison,成长型,3800,3800,3306,12600000.0,55440000.0
+current,头部,1728,1600,1312,8424000.0,44310240.0
+current,中腰部,2916,2700,2282,11016000.0,54088560.0
+current,成长型,4104,3800,3306,13608000.0,62052480.0

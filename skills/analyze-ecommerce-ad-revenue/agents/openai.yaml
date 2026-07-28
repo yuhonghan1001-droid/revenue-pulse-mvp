@@ -1,4 +1,7 @@
 interface:
-  display_name: "电商广告收入 BP 分析"
-  short_description: "将多源收入数据转化为可追溯的财务BP判断与管理层行动建议"
-  default_prompt: "使用 $analyze-ecommerce-ad-revenue 分析广告收入相对同比、预算和预测的表现，解释动因并生成可追溯的管理层简报。"
+  display_name: "电商广告收入经营分析 2.0"
+  short_description: "双路径拆解广告收入，治理口径、粒度、质量与证据链"
+  brand_color: "#0F766E"
+  default_prompt: "使用 $analyze-ecommerce-ad-revenue 检查我的广告经营数据能支持哪些收入分析，并生成可追溯的管理简报。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,519 @@
+{
+  "snapshotVersion": "3.0",
+  "generatedAt": "2026-07-28T01:45:00.000Z",
+  "input": {
+    "contractVersion": "3.0",
+    "classification": "demo",
+    "basis": "operating_ad_revenue",
+    "basisLabel": "广告经营收入（程序生成模拟）",
+    "current": {
+      "start": "2026-07-01",
+      "end": "2026-07-14",
+      "label": "本期",
+      "revenue": 19414339.6,
+      "monetizableVv": 351910712,
+      "adLoad": 0.7819330717048477,
+      "eCpm": 70.55382336161,
+      "opportunities": 394147223,
+      "requests": 357468950,
+      "filledRequests": 297989187,
+      "impressions": 275170624,
+      "clicks": 3953789,
+      "actualAdSpend": 19414339.6,
+      "gmv": 3676101000.56,
+      "attributedGmv": 160451280.0,
+      "dau": 128811200,
+      "activeAdvertisers": 8748,
+      "priorActiveAdvertisers": 8100,
+      "retainedAdvertisers": 6900,
+      "bounceRate": 0.2235668202764977,
+      "averageDwellSeconds": 403.6774193548387,
+      "organicConversionRate": 0.0343110599078341
+    },
+    "comparison": {
+      "start": "2026-06-17",
+      "end": "2026-06-30",
+      "label": "上期",
+      "revenue": 15964043.29,
+      "monetizableVv": 312312399,
+      "adLoad": 0.7547424718158564,
+      "eCpm": 67.72591490742957,
+      "opportunities": 349759043,
+      "requests": 313005481,
+      "filledRequests": 255266520,
+      "impressions": 235715432,
+      "clicks": 3385689,
+      "actualAdSpend": 15964043.29,
+      "gmv": 3371434432.27,
+      "attributedGmv": 143670000.0,
+      "dau": 121520000,
+      "activeAdvertisers": 8100,
+      "priorActiveAdvertisers": 8100,
+      "retainedAdvertisers": 6900,
+      "bounceRate": 0.2305668202764977,
+      "averageDwellSeconds": 389.6774193548387,
+      "organicConversionRate": 0.0328110599078341
+    },
+    "profiles": [
+      {
+        "sourceId": "ad_operations_v3",
+        "displayLabel": "广告经营与交付",
+        "format": "csv",
+        "sourceRoles": [
+          "ad_revenue",
+          "ad_delivery"
+        ],
+        "rowCount": 336,
+        "timeGrain": "day",
+        "dimensionGrain": [
+          "ad_format",
+          "traffic_scene",
+          "category",
+          "advertiser_tier"
+        ],
+        "primaryKeyColumns": [
+          "date",
+          "ad_format",
+          "traffic_scene",
+          "category",
+          "advertiser_tier"
+        ],
+        "currency": "CNY",
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "sourceId": "commerce_v3",
+        "displayLabel": "大盘交易",
+        "format": "csv",
+        "sourceRoles": [
+          "commerce"
+        ],
+        "rowCount": 448,
+        "timeGrain": "day",
+        "dimensionGrain": [
+          "traffic_scene",
+          "category"
+        ],
+        "primaryKeyColumns": [
+          "date",
+          "traffic_scene",
+          "category"
+        ],
+        "currency": "CNY",
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "sourceId": "advertiser_health_v3",
+        "displayLabel": "广告主健康",
+        "format": "csv",
+        "sourceRoles": [
+          "ad_attribution",
+          "advertiser_status"
+        ],
+        "rowCount": 6,
+        "timeGrain": "month",
+        "dimensionGrain": [
+          "advertiser_tier"
+        ],
+        "primaryKeyColumns": [
+          "period",
+          "advertiser_tier"
+        ],
+        "currency": "CNY",
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "sourceId": "user_experience_v3",
+        "displayLabel": "用户体验护栏",
+        "format": "csv",
+        "sourceRoles": [
+          "user_behavior"
+        ],
+        "rowCount": 112,
+        "timeGrain": "day",
+        "dimensionGrain": [
+          "traffic_scene"
+        ],
+        "primaryKeyColumns": [
+          "date",
+          "traffic_scene"
+        ],
+        "currency": null,
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "sourceId": "strategy_events_v3",
+        "displayLabel": "策略事件",
+        "format": "csv",
+        "sourceRoles": [
+          "strategy_event"
+        ],
+        "rowCount": 1,
+        "timeGrain": "event",
+        "dimensionGrain": [
+          "traffic_scene"
+        ],
+        "primaryKeyColumns": [
+          "event_id"
+        ],
+        "currency": null,
+        "timezone": "Asia/Shanghai"
+      }
+    ],
+    "mappings": [],
+    "quality": [
+      {
+        "id": "primary_keys",
+        "label": "主键唯一性",
+        "status": "pass",
+        "path": "all",
+        "detail": "所有模拟源主键唯一"
+      },
+      {
+        "id": "traffic_reconciliation",
+        "label": "流量公式勾稽",
+        "status": "pass",
+        "path": "traffic_monetization",
+        "detail": "收入与曝光和 eCPM 可勾稽"
+      },
+      {
+        "id": "common_grain",
+        "label": "共同粒度",
+        "status": "pass",
+        "path": "all",
+        "detail": "下钻仅使用共同维度，不展开粗粒度指标"
+      }
+    ],
+    "slices": [
+      {
+        "dimension": "ad_format",
+        "member": "信息流",
+        "current": {
+          "revenue": 5422864.42,
+          "monetizableVv": 117314187,
+          "adLoad": 0.7308477021623991,
+          "eCpm": 63.248659498446,
+          "impressions": 85738804,
+          "clicks": 1160440
+        },
+        "comparison": {
+          "revenue": 4457341.63,
+          "monetizableVv": 104572973,
+          "adLoad": 0.7051147336128619,
+          "eCpm": 60.45005174138681,
+          "impressions": 73735944,
+          "clicks": 998020
+        }
+      },
+      {
+        "dimension": "ad_format",
+        "member": "搜索广告",
+        "current": {
+          "revenue": 6425786.69,
+          "monetizableVv": 117101771,
+          "adLoad": 0.7813100196409497,
+          "eCpm": 70.23271342690654,
+          "impressions": 91492787,
+          "clicks": 1311075
+        },
+        "comparison": {
+          "revenue": 5285171.77,
+          "monetizableVv": 103937552,
+          "adLoad": 0.7542578643761015,
+          "eCpm": 67.41658906463715,
+          "impressions": 78395716,
+          "clicks": 1123017
+        }
+      },
+      {
+        "dimension": "ad_format",
+        "member": "直播广告",
+        "current": {
+          "revenue": 7565688.49,
+          "monetizableVv": 117494754,
+          "adLoad": 0.8335609009403092,
+          "eCpm": 77.24896048340604,
+          "impressions": 97939033,
+          "clicks": 1482274
+        },
+        "comparison": {
+          "revenue": 6221529.89,
+          "monetizableVv": 103801874,
+          "adLoad": 0.8052241137765971,
+          "eCpm": 74.43466286733266,
+          "impressions": 83583772,
+          "clicks": 1264652
+        }
+      },
+      {
+        "dimension": "traffic_scene",
+        "member": "商品详情",
+        "current": {
+          "revenue": 5314196.8,
+          "monetizableVv": 93552527,
+          "adLoad": 0.7876665373239998,
+          "eCpm": 72.11734254041642,
+          "impressions": 73688195,
+          "clicks": 1093255
+        },
+        "comparison": {
+          "revenue": 4384193.82,
+          "monetizableVv": 83239601,
+          "adLoad": 0.7602301457451724,
+          "eCpm": 69.28108314667722,
+          "impressions": 63281254,
+          "clicks": 938597
+        }
+      },
+      {
+        "dimension": "traffic_scene",
+        "member": "搜索",
+        "current": {
+          "revenue": 4243828.34,
+          "monetizableVv": 82100841,
+          "adLoad": 0.7704166148553825,
+          "eCpm": 67.0941356784304,
+          "impressions": 63251852,
+          "clicks": 843377
+        },
+        "comparison": {
+          "revenue": 3508743.27,
+          "monetizableVv": 73348273,
+          "adLoad": 0.7438197488303507,
+          "eCpm": 64.31229310280928,
+          "impressions": 54557894,
+          "clicks": 727567
+        }
+      },
+      {
+        "dimension": "traffic_scene",
+        "member": "直播",
+        "current": {
+          "revenue": 6530015.77,
+          "monetizableVv": 105210531,
+          "adLoad": 0.8048954624133586,
+          "eCpm": 77.11085854184144,
+          "impressions": 84683479,
+          "clicks": 1383347
+        },
+        "comparison": {
+          "revenue": 5360022.47,
+          "monetizableVv": 92852370,
+          "adLoad": 0.7770729384721143,
+          "eCpm": 74.28683097920832,
+          "impressions": 72153064,
+          "clicks": 1178458
+        }
+      },
+      {
+        "dimension": "traffic_scene",
+        "member": "首页推荐",
+        "current": {
+          "revenue": 3326298.69,
+          "monetizableVv": 71046813,
+          "adLoad": 0.7536875440141136,
+          "eCpm": 62.119121562852946,
+          "impressions": 53547098,
+          "clicks": 633810
+        },
+        "comparison": {
+          "revenue": 2711083.73,
+          "monetizableVv": 62872155,
+          "adLoad": 0.7272411769566353,
+          "eCpm": 59.29336844605432,
+          "impressions": 45723220,
+          "clicks": 541067
+        }
+      },
+      {
+        "dimension": "billing_method",
+        "member": "CPC",
+        "current": {
+          "revenue": 6425786.69,
+          "monetizableVv": 117101771,
+          "adLoad": 0.7813100196409497,
+          "eCpm": 70.23271342690654,
+          "impressions": 91492787,
+          "clicks": 1311075
+        },
+        "comparison": {
+          "revenue": 5285171.77,
+          "monetizableVv": 103937552,
+          "adLoad": 0.7542578643761015,
+          "eCpm": 67.41658906463715,
+          "impressions": 78395716,
+          "clicks": 1123017
+        }
+      },
+      {
+        "dimension": "billing_method",
+        "member": "CPM",
+        "current": {
+          "revenue": 12988552.91,
+          "monetizableVv": 234808941,
+          "adLoad": 0.7822437945410264,
+          "eCpm": 70.71377321369481,
+          "impressions": 183677837,
+          "clicks": 2642714
+        },
+        "comparison": {
+          "revenue": 10678871.52,
+          "monetizableVv": 208374847,
+          "adLoad": 0.7549841944215081,
+          "eCpm": 67.88005846641624,
+          "impressions": 157319716,
+          "clicks": 2262672
+        }
+      },
+      {
+        "dimension": "category",
+        "member": "数码",
+        "current": {
+          "revenue": 4859150.27,
+          "monetizableVv": 88323619,
+          "adLoad": 0.7813028698473055,
+          "eCpm": 70.41481695822122,
+          "impressions": 69007497,
+          "clicks": 989538
+        },
+        "comparison": {
+          "revenue": 3947247.45,
+          "monetizableVv": 77523707,
+          "adLoad": 0.7538397512389339,
+          "eCpm": 67.54306845539114,
+          "impressions": 58440452,
+          "clicks": 837380
+        }
+      },
+      {
+        "dimension": "category",
+        "member": "服饰",
+        "current": {
+          "revenue": 4899031.43,
+          "monetizableVv": 88426089,
+          "adLoad": 0.7827623021979407,
+          "eCpm": 70.77826407242804,
+          "impressions": 69216609,
+          "clicks": 999101
+        },
+        "comparison": {
+          "revenue": 4041215.47,
+          "monetizableVv": 78743652,
+          "adLoad": 0.7553782367117035,
+          "eCpm": 67.94100798939283,
+          "impressions": 59481241,
+          "clicks": 858510
+        }
+      },
+      {
+        "dimension": "category",
+        "member": "美妆",
+        "current": {
+          "revenue": 4863994.6,
+          "monetizableVv": 87869176,
+          "adLoad": 0.7827355749870694,
+          "eCpm": 70.71987063367197,
+          "impressions": 68778330,
+          "clicks": 990555
+        },
+        "comparison": {
+          "revenue": 4008375.41,
+          "monetizableVv": 78056979,
+          "adLoad": 0.7558649047896153,
+          "eCpm": 67.93795482959297,
+          "impressions": 59000531,
+          "clicks": 849670
+        }
+      },
+      {
+        "dimension": "category",
+        "member": "食品",
+        "current": {
+          "revenue": 4792163.3,
+          "monetizableVv": 87291828,
+          "adLoad": 0.7809229060937983,
+          "eCpm": 70.2991151825834,
+          "impressions": 68168188,
+          "clicks": 974595
+        },
+        "comparison": {
+          "revenue": 3967204.96,
+          "monetizableVv": 77988061,
+          "adLoad": 0.7538744680419738,
+          "eCpm": 67.47726642165877,
+          "impressions": 58793208,
+          "clicks": 840129
+        }
+      },
+      {
+        "dimension": "advertiser_tier",
+        "member": "中腰部",
+        "current": {
+          "revenue": 6529476.02,
+          "monetizableVv": 117636628,
+          "adLoad": 0.7837585926043374,
+          "eCpm": 70.8195966455846,
+          "impressions": 92198718,
+          "clicks": 1328831
+        },
+        "comparison": {
+          "revenue": 5346679.51,
+          "monetizableVv": 104000244,
+          "adLoad": 0.7564064080465042,
+          "eCpm": 67.96645128938128,
+          "impressions": 78666451,
+          "clicks": 1132899
+        }
+      },
+      {
+        "dimension": "advertiser_tier",
+        "member": "头部",
+        "current": {
+          "revenue": 6149188.19,
+          "monetizableVv": 116786832,
+          "adLoad": 0.7679426564118119,
+          "eCpm": 68.56383717830256,
+          "impressions": 89685590,
+          "clicks": 1267003
+        },
+        "comparison": {
+          "revenue": 5090974.06,
+          "monetizableVv": 104363726,
+          "adLoad": 0.7414619999289792,
+          "eCpm": 65.79038229653594,
+          "impressions": 77381737,
+          "clicks": 1093383
+        }
+      },
+      {
+        "dimension": "advertiser_tier",
+        "member": "成长型",
+        "current": {
+          "revenue": 6735675.39,
+          "monetizableVv": 117487252,
+          "adLoad": 0.7940122388767762,
+          "eCpm": 72.20432405112878,
+          "impressions": 93286316,
+          "clicks": 1357955
+        },
+        "comparison": {
+          "revenue": 5526389.72,
+          "monetizableVv": 103948429,
+          "adLoad": 0.7664112364795816,
+          "eCpm": 69.36840591598725,
+          "impressions": 79667244,
+          "clicks": 1159407
+        }
+      }
+    ],
+    "strategyEvents": [
+      {
+        "eventId": "evt-demo-001",
+        "label": "搜索广告样式实验（模拟）",
+        "start": "2026-07-06",
+        "end": "2026-07-10",
+        "scope": "搜索"
+      }
+    ]
+  }
+}

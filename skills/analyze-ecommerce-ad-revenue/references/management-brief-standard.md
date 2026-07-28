@@ -1,124 +1,122 @@
-# 管理层简报标准
+# 管理简报标准
 
 ## 必备结构
 
-### 1. 核心结论
+### 1. 身份与状态
 
-直接说明收入是否在轨、管理层需要关注什么，并写明数据截止时间。避免使用没有信息量的标题。
+首屏写明：
+
+- 收入口径；
+- 数据截止时间和比较期间；
+- 数据属于模拟还是真实；
+- 整体质量状态；
+- 可用和不可用的分析路径。
+
+### 2. 核心结论
+
+先写收入及可比变化，再写最大贡献和主要限制。没有可比基准时不生成变化率。
 
 推荐句式：
 
-`截至 {cutoff}，净收入 {actual}，同比 {yoy}；月底预计 {forecast}，较预算 {gap}。`
+```text
+截至 {as_of}，{basis} 为 {revenue}，较 {comparison} {change}。
+流量路径的最大贡献来自 {factor}；{unavailable_path} 因 {reason} 暂不可用。
+```
 
-### 2. 四层比较
+### 3. 两条路径
 
 展示：
 
-- 实际净收入；
-- 可比同比；
-- 时间进度预算达成率；
-- 全月预测较预算差异；
-- 较上一版预测变化。
+- 流量变现：可商业化 VV、Ad Load、eCPM 和贡献；
+- GMV 变现：GMV、广告货币化率和贡献；
+- 每条路径自己的质量状态与缺口。
 
-### 3. 动因桥
+### 4. 广告主与体验
 
-最多展示三个重要正向动因和三个重要负向动因。先写量化影响，再写解释，同时披露未解释残差。
+展示广告主 ROI、活跃和留存，以及退出率、停留时长、自然转化率。无正式阈值时只描述变化。
 
-### 4. 数据置信度
+### 5. 证据和限制
 
-展示整体数据质量状态、延迟的关键数据源、财务对账差异和已知缺口。指出哪些结论仍为临时判断。
+每条结论引用指标 ID 和数据源 ID。把事实、观察和待确认分开；披露残差、不可用指标和业务范围差异。
 
-### 5. 行动
+### 6. 待确认事项
 
-每项行动必须包括：
-
-- 明确动作；
-- 责任人；
-- 截止时间；
-- 触发条件或成功标准。
-
-禁止只写“持续关注”，却不提供阈值和责任人。
-
-## 结论表达
-
-在可审计输出中明确标注：
-
-- 事实：“数据显示……”
-- 预测：“基于……假设，预计……”
-- 判断：“结合……，BP 判断……”
-- 风险：“由于……尚未确认，存在……风险”
-
-不能通过删掉限定词，把判断包装成事实。
-
-## 按阅读对象调整
-
-### 财务 BP
-
-包含计算细节、财务对账、数据源健康情况、预测假设和待确认问题。
-
-### 业务负责人
-
-突出可控制的商家、流量和产品动作，并给出下一步行动；同时保留指标定义入口。
-
-### 财务负责人
-
-突出预测较目标差异、风险金额、数据置信度、需要做出的决策和责任人。
-
-### 高层管理者
-
-使用一个结论、三个动因、两个风险和明确决策。只有当运营细节会改变决策时才展开。
-
-## 飞书卡片
-
-保证首屏可以快速阅读：
-
-1. 核心结论和数据截止时间；
-2. 实际、预算和预测指标；
-3. 首要动因；
-4. 风险或所需行动；
-5. 受治理看板链接。
-
-禁止在卡片中放置凭证、个人原始标识或无权限的商家级明细。
+使用明确的问题、负责人和截止时间。避免“持续关注”一类无法验收的表述。
 
 ## 结构化简报格式
 
-需要自动校验或自动推送时，使用以下结构：
-
 ```json
 {
-  "as_of": "YYYY-MM-DDTHH:MM:SS+08:00",
-  "audience": "finance_leader",
-  "decision_status": "watch",
-  "data_quality": {
-    "status": "warn",
-    "freshness_pct": 95.8,
-    "completeness_pct": 99.7,
-    "uniqueness_pct": 100.0,
-    "join_success_pct": 99.6,
-    "blockers": []
-  },
+  "contract_version": "3.0",
+  "classification": "demo",
+  "analysis_id": "rv3-example",
+  "as_of": "2026-07-27",
+  "basis": "operating_ad_revenue",
+  "basis_label": "广告经营收入",
+  "comparison_label": "上期",
+  "quality_status": "pass",
   "metrics": {
-    "actual_net_revenue": {"value": 0, "unit": "CNY", "source_ids": ["billing"]},
-    "yoy_growth_pct": {"value": 0, "unit": "%", "source_ids": ["billing", "calendar"]},
-    "budget_attainment_pct": {"value": 0, "unit": "%", "source_ids": ["billing", "budget"]},
-    "month_end_forecast": {"value": 0, "unit": "CNY", "source_ids": ["billing", "forecast"]},
-    "forecast_vs_budget_pct": {"value": 0, "unit": "%", "source_ids": ["forecast", "budget"]}
+    "revenue": {
+      "value": 12600000,
+      "unit": "CNY",
+      "status": "available",
+      "source_ids": ["ad_revenue"]
+    },
+    "ad_load": {
+      "value": 0.12,
+      "unit": "ratio",
+      "status": "available",
+      "source_ids": ["ad_delivery"]
+    },
+    "ecpm": {
+      "value": 150,
+      "unit": "CNY",
+      "status": "available",
+      "source_ids": ["ad_revenue", "ad_delivery"]
+    },
+    "ad_take_rate": {
+      "value": 0.02,
+      "unit": "ratio",
+      "status": "available",
+      "source_ids": ["ad_revenue", "commerce"]
+    }
   },
+  "paths": [
+    {"id": "traffic_monetization", "status": "available"},
+    {"id": "gmv_monetization", "status": "available"}
+  ],
+  "contribution_bridges": [
+    {
+      "id": "traffic_base",
+      "change": 2100000,
+      "contributions": [],
+      "residual": 0
+    }
+  ],
   "claims": [
     {
       "type": "fact",
-      "text": "截至当前累计净收入……",
-      "evidence_refs": ["metric:actual_net_revenue"],
-      "source_ids": ["billing"],
-      "confidence": "high"
+      "text": "本期广告经营收入较上期增长。",
+      "metric_ids": ["revenue"],
+      "source_ids": ["ad_revenue"]
     }
   ],
-  "drivers": {"positive": [], "negative": [], "unexplained_residual": 0},
-  "forecast_assumptions": ["近7日运行速度保持稳定"],
-  "actions": [
-    {"action": "核实搜索流量变化", "owner": "流量策略", "due_date": "YYYY-MM-DD", "trigger": "连续3日低于基线5%"}
-  ],
   "known_gaps": [],
-  "limitations": ["转化数据延迟，暂不发布ROI判断"]
+  "limitations": ["没有实验支持时不声明因果"],
+  "review_status": "draft"
 }
 ```
+
+## 飞书卡片
+
+首屏依次展示：
+
+1. 收入口径、截止时间和质量状态；
+2. 收入及可比变化；
+3. 最大贡献；
+4. Ad Load、eCPM、广告货币化率；
+5. 广告主 ROI 或留存；
+6. 数据缺口；
+7. 受保护看板链接。
+
+真实数据卡片必须先完成财务 BP 人工审核和收件人确认。卡片不得包含凭证、个人标识、原始商家明细或未经确认的财务口径。

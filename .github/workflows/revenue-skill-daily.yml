@@ -1,17 +1,18 @@
-name: Revenue Skill Daily
+name: Revenue Pulse v3 Daily
 
 on:
   workflow_dispatch:
   schedule:
-    # 北京时间每日 09:45。GitHub cron 使用 UTC。
+    # 北京时间每日 09:45；GitHub cron 使用 UTC。
     - cron: "45 1 * * *"
 
 permissions:
   contents: read
 
 jobs:
-  analyze-and-push:
+  analyze-demo:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: 获取项目
         uses: actions/checkout@v4
@@ -21,11 +22,34 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 拼接注册数据源并生成最新快照
-        run: python3 data_pipeline/run_pipeline.py
+      - name: 记录任务开始时间
+        run: python3 data_pipeline/time_audit_v3.py start
 
-      - name: 执行收入分析 Skill 并推送飞书
+      - name: 生成 v3 匿名模拟数据
+        run: |
+          python3 data_pipeline/generate_demo_data_v3.py
+          python3 data_pipeline/run_pipeline_v3.py
+          python3 data_pipeline/time_audit_v3.py pipeline
+
+      - name: 执行 v3 收入分析
         env:
           REVENUE_PUSH_TOKEN: ${{ secrets.REVENUE_PUSH_TOKEN }}
           REVENUE_PULSE_URL: https://revenue-pulse-mvp.happynamely.chatgpt.site
-        run: python3 data_pipeline/publish_snapshot.py --push
+        run: |
+          python3 data_pipeline/publish_snapshot_v3.py
+          python3 data_pipeline/time_audit_v3.py analysis
+
+      - name: 记录完成时间
+        if: always()
+        run: python3 data_pipeline/time_audit_v3.py complete
+
+      - name: 保存时间审计
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: revenue-pulse-v3-timing-${{ github.run_id }}
+          path: |
+            work/timing-v3.json
+            work/analysis-response-v3.json
+          if-no-files-found: warn
+          retention-days: 30

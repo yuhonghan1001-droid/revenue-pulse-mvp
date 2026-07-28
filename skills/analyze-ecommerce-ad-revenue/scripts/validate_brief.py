@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""校验广告收入经营简报是否满足最低控制要求。"""
+"""Validate a governed Revenue Pulse v3 brief."""
 
 from __future__ import annotations
 
@@ -9,140 +9,172 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-ALLOWED_AUDIENCES = {"finance_bp", "business_owner", "finance_leader", "executive"}
-ALLOWED_DECISIONS = {"no_action", "watch", "action"}
-ALLOWED_QUALITY = {"pass", "warn", "fail"}
-ALLOWED_CLAIMS = {"fact", "forecast", "judgment", "risk"}
-ALLOWED_CONFIDENCE = {"low", "medium", "high"}
-REQUIRED_METRICS = {
-    "actual_net_revenue",
-    "yoy_growth_pct",
-    "budget_attainment_pct",
-    "month_end_forecast",
-    "forecast_vs_budget_pct",
+ALLOWED_CLASSIFICATIONS = {"demo", "real"}
+ALLOWED_BASIS = {
+    "operating_ad_revenue",
+    "advertiser_spend",
+    "billable_amount",
+    "financial_close_revenue",
+    "other",
+    "unconfirmed",
 }
-QUALITY_FIELDS = {
-    "freshness_pct",
-    "completeness_pct",
-    "uniqueness_pct",
-    "join_success_pct",
+ALLOWED_STATUS = {
+    "available",
+    "warning",
+    "unavailable",
+    "pending_confirmation",
+    "blocked",
+}
+ALLOWED_QUALITY = {"pass", "warn", "fail"}
+ALLOWED_CLAIMS = {"fact", "observation", "pending_confirmation"}
+REQUIRED_FIELDS = {
+    "contract_version",
+    "classification",
+    "analysis_id",
+    "as_of",
+    "basis",
+    "basis_label",
+    "comparison_label",
+    "quality_status",
+    "metrics",
+    "paths",
+    "contribution_bridges",
+    "claims",
+    "known_gaps",
+    "limitations",
+    "review_status",
+}
+FORBIDDEN_FIELDS = {
+    "monthly_budget",
+    "time_phased_budget",
+    "budget_attainment",
+    "forecast_vs_budget",
+    "merchant_budget",
+    "budget_utilization",
 }
 
 
 def is_number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def find_forbidden(value: Any, path: str = "$") -> list[str]:
+    errors: list[str] = []
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            errors.extend(find_forbidden(item, f"{path}[{index}]"))
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            if key.lower() in FORBIDDEN_FIELDS:
+                errors.append(f"{path}.{key}：v3 不接受该字段")
+            errors.extend(find_forbidden(child, f"{path}.{key}"))
+    return errors
 
 
 def validate(data: Any) -> tuple[list[str], list[str]]:
-    errors: list[str] = []
+    errors = find_forbidden(data)
     warnings: list[str] = []
-
     if not isinstance(data, dict):
-        return ["JSON 根节点必须是对象。"], warnings
+        return errors + ["JSON 根节点必须是对象。"], warnings
 
-    for field in ("as_of", "audience", "decision_status", "data_quality", "metrics", "claims", "drivers", "actions", "known_gaps"):
-        if field not in data:
-            errors.append(f"缺少必填字段：{field}")
-
-    if data.get("audience") not in ALLOWED_AUDIENCES:
-        errors.append(f"audience 必须是以下值之一：{', '.join(sorted(ALLOWED_AUDIENCES))}")
-    if data.get("decision_status") not in ALLOWED_DECISIONS:
-        errors.append(f"decision_status 必须是以下值之一：{', '.join(sorted(ALLOWED_DECISIONS))}")
-
-    quality = data.get("data_quality")
-    if isinstance(quality, dict):
-        status = quality.get("status")
-        if status not in ALLOWED_QUALITY:
-            errors.append(f"data_quality.status 必须是以下值之一：{', '.join(sorted(ALLOWED_QUALITY))}")
-        for field in QUALITY_FIELDS:
-            value = quality.get(field)
-            if not is_number(value) or not 0 <= value <= 100:
-                errors.append(f"data_quality.{field} 必须是 0 到 100 之间的数字")
-        if not isinstance(quality.get("blockers"), list):
-            errors.append("data_quality.blockers 必须是数组")
-        if status == "fail" and data.get("decision_status") != "watch":
-            errors.append("数据质量失败时，decision_status 必须设为 watch")
-        if status != "pass" and not data.get("limitations"):
-            errors.append("数据质量未通过时，必须填写至少一项 limitation")
-    elif "data_quality" in data:
-        errors.append("data_quality 必须是对象")
+    for field in sorted(REQUIRED_FIELDS - data.keys()):
+        errors.append(f"缺少必填字段：{field}")
+    if data.get("contract_version") != "3.0":
+        errors.append("contract_version 必须为 3.0")
+    if data.get("classification") not in ALLOWED_CLASSIFICATIONS:
+        errors.append("classification 必须是 demo 或 real")
+    if data.get("basis") not in ALLOWED_BASIS:
+        errors.append("basis 不是支持的收入口径")
+    if data.get("quality_status") not in ALLOWED_QUALITY:
+        errors.append("quality_status 必须是 pass、warn 或 fail")
+    if data.get("review_status") not in {"draft", "approved"}:
+        errors.append("review_status 必须是 draft 或 approved")
 
     metrics = data.get("metrics")
-    if isinstance(metrics, dict):
-        missing_metrics = sorted(REQUIRED_METRICS - metrics.keys())
-        if missing_metrics:
-            errors.append(f"缺少受治理指标：{', '.join(missing_metrics)}")
+    if isinstance(metrics, dict) and metrics:
         for metric_id, metric in metrics.items():
+            prefix = f"metrics.{metric_id}"
             if not isinstance(metric, dict):
-                errors.append(f"metrics.{metric_id} 必须是对象")
+                errors.append(f"{prefix} 必须是对象")
                 continue
-            if not is_number(metric.get("value")):
-                errors.append(f"metrics.{metric_id}.value 必须是有限数字")
+            status = metric.get("status")
+            if status not in ALLOWED_STATUS:
+                errors.append(f"{prefix}.status 无效")
+            value = metric.get("value")
+            if status in {"available", "warning"} and not is_number(value):
+                errors.append(f"{prefix}.value 在可用状态下必须是有限数字")
+            if status not in {"available", "warning"} and value is not None:
+                errors.append(f"{prefix}.value 在不可用状态下必须为 null")
+            if status not in {"available", "warning"} and not metric.get("reason"):
+                errors.append(f"{prefix}.reason 在不可用状态下为必填")
             if not metric.get("unit"):
-                errors.append(f"metrics.{metric_id}.unit 为必填项")
-            if not isinstance(metric.get("source_ids"), list) or not metric.get("source_ids"):
-                errors.append(f"metrics.{metric_id}.source_ids 必须是非空数组")
+                errors.append(f"{prefix}.unit 为必填")
+            if not isinstance(metric.get("source_ids"), list):
+                errors.append(f"{prefix}.source_ids 必须是数组")
     elif "metrics" in data:
-        errors.append("metrics 必须是对象")
+        errors.append("metrics 必须是非空对象")
+
+    paths = data.get("paths")
+    if not isinstance(paths, list) or not paths:
+        errors.append("paths 必须是非空数组")
+
+    bridges = data.get("contribution_bridges")
+    if isinstance(bridges, list):
+        for index, bridge in enumerate(bridges):
+            if not isinstance(bridge, dict):
+                errors.append(f"contribution_bridges[{index}] 必须是对象")
+                continue
+            if bridge.get("status", "available") in {"available", "warning"}:
+                change = bridge.get("change")
+                residual = bridge.get("residual")
+                contributions = bridge.get("contributions")
+                if not is_number(change) or not is_number(residual):
+                    errors.append(f"contribution_bridges[{index}] 的变化和残差必须是有限数字")
+                if not isinstance(contributions, list):
+                    errors.append(f"contribution_bridges[{index}].contributions 必须是数组")
+                elif is_number(change) and is_number(residual):
+                    total = sum(
+                        item.get("contribution", 0)
+                        for item in contributions
+                        if isinstance(item, dict) and is_number(item.get("contribution"))
+                    )
+                    if abs(total + residual - change) > 0.01:
+                        errors.append(f"contribution_bridges[{index}] 无法与收入变化勾稽")
+    elif "contribution_bridges" in data:
+        errors.append("contribution_bridges 必须是数组")
 
     claims = data.get("claims")
-    claim_types: set[str] = set()
-    if isinstance(claims, list) and claims:
+    if isinstance(claims, list):
         for index, claim in enumerate(claims):
             prefix = f"claims[{index}]"
             if not isinstance(claim, dict):
                 errors.append(f"{prefix} 必须是对象")
                 continue
-            claim_type = claim.get("type")
-            claim_types.add(claim_type)
-            if claim_type not in ALLOWED_CLAIMS:
-                errors.append(f"{prefix}.type 必须是以下值之一：{', '.join(sorted(ALLOWED_CLAIMS))}")
+            if claim.get("type") not in ALLOWED_CLAIMS:
+                errors.append(f"{prefix}.type 无效")
             if not claim.get("text"):
-                errors.append(f"{prefix}.text 为必填项")
-            if not isinstance(claim.get("evidence_refs"), list) or not claim.get("evidence_refs"):
-                errors.append(f"{prefix}.evidence_refs 必须是非空数组")
-            if not isinstance(claim.get("source_ids"), list) or not claim.get("source_ids"):
-                errors.append(f"{prefix}.source_ids 必须是非空数组")
-            if claim.get("confidence") not in ALLOWED_CONFIDENCE:
-                errors.append(f"{prefix}.confidence 必须是以下值之一：{', '.join(sorted(ALLOWED_CONFIDENCE))}")
+                errors.append(f"{prefix}.text 为必填")
+            if not isinstance(claim.get("metric_ids"), list):
+                errors.append(f"{prefix}.metric_ids 必须是数组")
+            if not isinstance(claim.get("source_ids"), list):
+                errors.append(f"{prefix}.source_ids 必须是数组")
     elif "claims" in data:
-        errors.append("claims 必须是非空数组")
-    if claims and "fact" not in claim_types:
-        warnings.append("简报中没有 fact 类型结论")
-    if claims and "forecast" not in claim_types:
-        warnings.append("简报中没有 forecast 类型结论")
+        errors.append("claims 必须是数组")
 
-    drivers = data.get("drivers")
-    if isinstance(drivers, dict):
-        for direction in ("positive", "negative"):
-            if not isinstance(drivers.get(direction), list):
-                errors.append(f"drivers.{direction} 必须是数组")
-        if "unexplained_residual" not in drivers or not is_number(drivers.get("unexplained_residual")):
-            errors.append("drivers.unexplained_residual 必须是有限数字")
-    elif "drivers" in data:
-        errors.append("drivers 必须是对象")
+    for field in ("known_gaps", "limitations"):
+        if field in data and not isinstance(data[field], list):
+            errors.append(f"{field} 必须是数组")
 
-    actions = data.get("actions")
-    if isinstance(actions, list):
-        for index, action in enumerate(actions):
-            prefix = f"actions[{index}]"
-            if not isinstance(action, dict):
-                errors.append(f"{prefix} 必须是对象")
-                continue
-            for field in ("action", "owner", "due_date", "trigger"):
-                if not action.get(field):
-                    errors.append(f"{prefix}.{field} 为必填项")
-    elif "actions" in data:
-        errors.append("actions 必须是数组")
-
-    if isinstance(data.get("known_gaps"), list) is False and "known_gaps" in data:
-        errors.append("known_gaps 必须是数组")
-
-    if "forecast" in claim_types:
-        assumptions = data.get("forecast_assumptions")
-        if not isinstance(assumptions, list) or not assumptions:
-            errors.append("存在 forecast 类型结论时，forecast_assumptions 必须为非空数组")
+    if data.get("classification") == "real" and data.get("public") is True:
+        errors.append("真实数据简报不能标记为公开")
+    if data.get("basis") == "unconfirmed":
+        revenue = metrics.get("revenue") if isinstance(metrics, dict) else None
+        if isinstance(revenue, dict) and revenue.get("status") != "pending_confirmation":
+            errors.append("口径待确认时，收入状态必须是 pending_confirmation")
 
     return errors, warnings
 
@@ -151,7 +183,6 @@ def main() -> int:
     if len(sys.argv) != 2:
         print("用法：validate_brief.py 简报.json", file=sys.stderr)
         return 2
-
     path = Path(sys.argv[1])
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -161,17 +192,14 @@ def main() -> int:
     except json.JSONDecodeError as exc:
         print(f"错误：JSON 格式无效：{exc}", file=sys.stderr)
         return 2
-
     errors, warnings = validate(data)
     for warning in warnings:
         print(f"警告：{warning}")
     for error in errors:
         print(f"错误：{error}")
-
     if errors:
         print(f"校验失败：{len(errors)} 项错误，{len(warnings)} 项警告")
         return 1
-
     print(f"校验通过：0 项错误，{len(warnings)} 项警告")
     return 0
 

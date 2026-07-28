@@ -1,124 +1,88 @@
-# Revenue Pulse｜广告收入经营罗盘
+# Revenue Pulse｜广告收入经营分析
 
-一个面向电商广告业务的经营分析 MVP：用代码拼接 24 个数据集，完成收入监控、月底预测、BP 驱动模型、动因拆解、指标治理、数据健康检查和可追溯经营简报。
+Revenue Pulse 是一个面向电商广告业务财务 BP 的可运行 MVP。它把广告收入拆到可归因、可追溯的经营变量，并将公开模拟演示与真实数据工作区严格分开。
 
-[在线演示](https://revenue-pulse-mvp.happynamely.chatgpt.site)
+- GitHub：<https://github.com/yuhonghan1001-droid/revenue-pulse-mvp>
+- 公开站点：<https://revenue-pulse-mvp.happynamely.chatgpt.site>
+- v0.3 模拟看板：发布后访问 `/v3`
+- 项目交接：[PROJECT_HANDOFF_CN.md](PROJECT_HANDOFF_CN.md)
 
-> 本项目只包含程序生成的模拟数据，不包含任何企业真实收入、商家或财务数据。
+> 仓库和公开看板只包含程序生成的模拟数据，不包含企业真实收入、广告主、交易或个人数据。
 
-如需更换 ChatGPT、Codex 或 GitHub 账号继续开发，请先阅读
-[`PROJECT_HANDOFF_CN.md`](PROJECT_HANDOFF_CN.md)。
+## v0.3 能做什么
 
-## 解决什么问题
+### 公开模拟看板
 
-财务 BP 经常需要回答：
+任何人无需登录即可查看：
 
-- 截至今天，本月广告收入是多少？
-- 与同比、预算和上一版预测相比表现如何？
-- 月底大约会达到多少？
-- 增长或下降发生在哪些行业、广告产品和流量场景？
-- 哪些变化是数据事实，哪些是业务判断，哪些仍需业务确认？
+- 广告经营收入及可比变化；
+- `VV × Ad Load × eCPM` 流量变现路径；
+- `GMV × 广告货币化率` GMV 变现路径；
+- 三因子和六因子 Shapley 贡献；
+- GMV 与货币化率中点贡献；
+- 广告形式、场景、计费方式、类目和广告主分层下钻；
+- 广告主 ROI、活跃和留存；
+- 退出率、停留时长和自然转化护栏；
+- 数据质量、指标状态、证据链和管理简报。
 
-Revenue Pulse 将取数、拼接、质量检查和经营分析串成一个可重复运行的流程。
+### 受保护的真实数据工作区
 
-## 功能
+获准用户访问 `/workspace` 后可以：
 
-- 本月累计收入、同比、预算完成率和月底预测
-- 实际、同比、预算、最新预测四层 BP 比较框架
-- 流量变现、商家需求、计费确收三棵收入驱动树
-- 实际、预测和预算累计趋势
-- 行业、广告产品和流量场景三类动因下钻
-- 异常与增长机会清单
-- 24 个数据源健康中心：及时性、完整性、唯一性和关联成功率
-- 统一的指标口径中心：定义、公式、粒度、负责人和依赖数据
-- 事实、预测、判断、风险四类结论的证据链
-- 可复制的管理层经营摘要与每日推送预览
-- 服务端飞书机器人推送接口（默认个人私信，群 Webhook 作为备用；所有凭证仅通过托管环境密钥注入）
-- 主键重复、维表匹配、财务对账、及时性和已知数据缺口检查
+1. 上传 CSV、TSV 或无宏 XLSX；
+2. 在浏览器本地识别字段和样例；
+3. 确认收入、流量、投放、GMV、广告主和体验字段；
+4. 明确当前金额是经营收入、实际消耗、可计费金额还是月结收入；
+5. 检查本期数据支持哪些分析路径；
+6. 生成受治理的聚合分析；
+7. 人工审核管理简报；
+8. 在服务端功能明确开启后，人工确认推送飞书。
 
-## AI Skill
+原始文件和样例值不会上传。默认只在当前页面保留结果；只有明确开启真实聚合结果保存后，服务端才保存受保护的聚合合同。
 
-项目包含可复用的 [`analyze-ecommerce-ad-revenue`](skills/analyze-ecommerce-ad-revenue/SKILL.md) Skill，将财务 BP 的收入分析方法从代码中进一步沉淀为显式的 AI 工作规范。
+## 分析逻辑
 
-Skill 覆盖：
-
-- 实际、同比、预算和预测的统一指标口径；
-- 多源数据的及时性、完整性、唯一性、关联和财务对账门槛；
-- 流量变现、商家需求、计费到确收三棵收入驱动树；
-- 事实、预测、判断和风险的证据链；
-- 面向财务 BP、业务负责人、财务老板和管理层的分层输出；
-- 业务反馈转化为新规则、评测案例和回归验证的迭代机制。
-
-结构化经营简报可通过 Skill 内置校验器检查：
-
-```bash
-python3 skills/analyze-ecommerce-ad-revenue/scripts/validate_brief.py path/to/brief.json
-```
-
-Skill 只有在新增案例通过且历史案例无回退时，才将规则变化视为能力升级。这样可以区分“修改了一段提示词”和“形成了可验证的新财务分析能力”。
-
-### 运行时接入
-
-Skill 已接入线上执行链路：
+基础流量路径：
 
 ```text
-24 源数据管道
-    → dashboard.json 最新快照
-    → 数据质量门槛
-    → 收入分析 Skill
-    → 保存快照与分析版本
-    → 看板读取最新结果
-    → 按需推送飞书个人私信
+广告收入 = 可商业化 VV × Ad Load × eCPM ÷ 1000
+Ad Load = 广告曝光 ÷ 可商业化 VV
+eCPM = 广告收入 ÷ 广告曝光 × 1000
 ```
 
-- `POST /api/analysis/run`：接收最新快照并执行 Skill，需要服务端令牌。
-- `GET /api/analysis/latest`：读取最近一次已经保存的分析结果。
-- `data_pipeline/publish_snapshot.py`：把 Python 管道的最新结果提交给线上执行器。
-- `.github/workflows/revenue-skill-daily.yml`：每日北京时间 09:45 自动运行，也支持在 GitHub Actions 手动运行。
-
-定时任务需要在 GitHub 仓库 Actions secrets 中配置 `REVENUE_PUSH_TOKEN`，其值应与托管环境中的同名密钥一致。该令牌只用于执行收入分析，不与飞书应用凭证混用。
-
-线上环境可以配置：
-
-- `OPENAI_API_KEY`：可选；配置后由模型按照完整 Skill 生成管理层语言，必须作为密钥保存。
-- `OPENAI_MODEL`：可选；默认 `gpt-5.6-sol`。
-- `REVENUE_PUSH_TOKEN`：线上分析执行令牌，必须同时配置到托管环境和 GitHub Actions secrets。
-- `REVENUE_AS_OF`：可选的历史重跑日期，格式为 `YYYY-MM-DD`；未配置时自动使用收入与确收数据中的最新日期。
-
-未配置模型密钥时，系统使用可审计规则引擎生成简报，指标计算、质量门槛、版本保存和飞书推送仍然正常运行。AI 只增强管理层语言，不允许修改受治理指标。
-
-## 数据管道
+展开流量路径：
 
 ```text
-24 个原始数据集
-        ↓
-数据源注册表与字段标准化
-        ↓
-主键、复合键和粒度检查
-        ↓
-商家 / 产品 / 流量 / 日期维度关联
-        ↓
-经营口径与财务确收对账
-        ↓
-指标合约、收入驱动树、预测、动因和异常计算
-        ↓
-可追溯证据链与推送内容生成
-        ↓
-dashboard.json → 经营驾驶舱
+广告收入 =
+可商业化 VV
+× 每 VV 广告机会
+× 请求率
+× 填充率
+× 渲染率
+× eCPM ÷ 1000
 ```
 
-本仓库包含 24 个模拟源文件，覆盖：
+GMV 路径：
 
-- 商家主数据、行业、分层、区域、客户经理和生命周期
-- 广告产品、定价和流量场景
-- 日历、营销活动和策略事件
-- 收入、曝光、点击、转化、流量库存和商家预算
-- 计费确收、返点、退款、预测基线和月度预算
-- 数据源更新时间与 SLA
+```text
+广告收入 = GMV × 广告货币化率
+广告货币化率 = 广告收入 ÷ 同期间同范围 GMV
+```
 
-数据源定义位于 `data_pipeline/config/source_registry.json`。真实接入时，可以把 CSV 读取替换为数据仓库查询、API 或自动下载适配器，保留后续的关联、检查和输出逻辑。
+基础 Ad Load 已包含曝光形成结果，不能再额外乘一次填充率。分母缺失、为零或业务范围不兼容时，指标显示“不可用”及原因，不补零、不生成 `NaN`。
 
-每次线上运行都会保存完整数据快照和结构化分析结果。看板中的核心指标、趋势、动因、数据健康、指标口径、证据链和推送预览统一读取最近一次已保存快照。
+## 收入口径
+
+系统不会把 Sales、广告消耗或可计费金额自动称为财务收入。每次分析必须确认一个口径：
+
+- 广告经营收入；
+- 广告实际消耗；
+- 可计费金额；
+- 月结实际收入；
+- 其他；
+- 当前无法确认。
+
+选择“当前无法确认”时，系统只盘点数据，不生成收入结论。
 
 ## 本地运行
 
@@ -126,44 +90,142 @@ dashboard.json → 经营驾驶舱
 
 ```bash
 pnpm install
-python3 data_pipeline/generate_demo_data.py
-python3 data_pipeline/run_pipeline.py
+python3 data_pipeline/generate_demo_data_v3.py
+python3 data_pipeline/run_pipeline_v3.py
+pnpm test
 pnpm run dev
 ```
 
-打开 `http://localhost:3000`。
+打开：
 
-生成生产版本：
+- 旧版兼容页面：`http://localhost:3000/`
+- v0.3 模拟看板：`http://localhost:3000/v3`
+- 受保护工作区：`http://localhost:3000/workspace`
 
-```bash
-pnpm run build
-```
-
-## 目录
+本地 Worker 默认关闭 v0.3 路由。需要测试时，在本地环境中设置：
 
 ```text
-app/                         驾驶舱页面与前端数据
-data_pipeline/
-  config/source_registry.json  24 个数据源注册表
-  generate_demo_data.py        模拟数据生成
-  run_pipeline.py              拼接、计算与质量检查
-  data/raw/                    模拟源数据
-skills/
-  analyze-ecommerce-ad-revenue/  可复用、可评测的财务 BP 收入分析 Skill
+ENABLE_AD_REVENUE_V3=true
 ```
 
-## 接入真实数据
+## v0.3 目录
 
-建议按以下顺序替换：
+```text
+app/v3/                                  公开模拟看板
+app/workspace/                           受保护工作区
+app/data/dashboard-v3.json               v3 模拟快照
+components/revenue-v3/                   v3 页面组件
+lib/revenue-v3/                          合同、指标、归因和本地解析
+worker/v3/                               v3 API、D1、飞书与隔离
+data_pipeline/config/source_registry_v3.json
+data_pipeline/generate_demo_data_v3.py
+data_pipeline/run_pipeline_v3.py
+skills/analyze-ecommerce-ad-revenue/      Revenue Skill 2.0
+drizzle/0001_revenue_v3.sql              新增式 D1 迁移
+```
 
-1. 保持 `source_registry.json` 中的数据源 ID 稳定；
-2. 将模拟 CSV 替换为真实查询或文件适配器；
-3. 对齐商家、产品、流量和日期关联键；
-4. 确认经营收入、计费收入与财务确收的差异；
-5. 与历史人工报表并行运行两到三个周期；
-6. 对账稳定后，再启用自动推送。
+## Revenue Skill 2.0
 
-涉及真实财务数据时，请自行增加权限控制、脱敏、审计日志和密钥管理。
+Skill 将分析方法沉淀为可复用规则：
+
+```text
+skills/analyze-ecommerce-ad-revenue/
+  SKILL.md
+  agents/openai.yaml
+  references/
+  scripts/validate_brief.py
+```
+
+AI 只能整理已经计算完成的受治理结论，不能新增或修改数字、补充没有依据的阈值，也不能把相关性写成因果。
+
+校验结构化简报：
+
+```bash
+python3 skills/analyze-ecommerce-ad-revenue/scripts/validate_brief.py \
+  tests/fixtures/revenue-v3-brief-valid.json
+```
+
+## API
+
+开启 v0.3 后：
+
+| 接口 | 访问要求 | 作用 |
+|---|---|---|
+| `GET /api/v3/public/latest` | 匿名 | 只读取公开模拟结果 |
+| `POST /api/v3/analyses` | 登录允许名单或自动任务令牌 | 运行受治理分析 |
+| `GET/POST /api/v3/mapping-profiles` | 登录允许名单 | 读取或保存不含样例值的字段映射 |
+| `GET /api/v3/analyses/latest` | 登录允许名单 | 读取当前用户私有结果 |
+| `GET /api/v3/analyses/:id` | 登录允许名单 | 读取本人结果或公开模拟结果 |
+| `POST /api/v3/analyses/:id/approve` | 结果所有者 | 审核简报 |
+| `POST /api/v3/analyses/:id/feishu` | 已审核、开关开启、幂等键 | 人工确认发送 |
+
+自动任务令牌只能提交 `demo` 输入，不能提交真实数据。
+
+## 功能开关
+
+所有高风险能力默认关闭：
+
+```text
+ENABLE_AD_REVENUE_V3=false
+ALLOW_REAL_DATA_PERSISTENCE=false
+ALLOW_MANUAL_FEISHU_PUSH=false
+ALLOW_AUTOMATED_FEISHU_PUSH=false
+REVENUE_WORKSPACE_ALLOWED_EMAILS=
+```
+
+推荐发布顺序：
+
+1. 运行迁移、测试和构建；
+2. 只开启 `ENABLE_AD_REVENUE_V3`；
+3. 验证匿名看板只显示模拟数据；
+4. 配置工作区允许名单；
+5. 单独评审是否开启真实聚合结果保存；
+6. 单独评审是否开启人工飞书；
+7. 自动飞书继续保持关闭。
+
+详见 [v0.3 发布与回滚](docs/RELEASE_AND_ROLLBACK_V03.md)。
+
+## 每日 09:45 自动任务
+
+`.github/workflows/revenue-skill-daily.yml` 使用 UTC cron `45 1 * * *`，对应北京时间 09:45。
+
+任务现在记录：
+
+```text
+scheduled_at
+started_at
+pipeline_finished_at
+analysis_finished_at
+feishu_sent_at
+completed_at
+```
+
+时间审计作为 GitHub Actions artifact 保存 30 天，可以区分调度排队、数据管道、分析和发送延迟。自动任务只生成和发布模拟聚合分析，默认不发送飞书。
+
+## 安全边界
+
+- 公开接口只返回 `demo_public`；
+- 真实结果只能是 `private`；
+- 真实结果按登录用户隔离；
+- 原始 CSV/XLSX 不上传；
+- D1 不保存原始行或样例值；
+- 未审核、质量失败、审核后内容变化或重复幂等键时，飞书不能发送；
+- 密钥只保存在 Sites 环境或 GitHub Secrets；
+- 不把收件人、邮箱、Open ID、Webhook 或令牌提交到 Git。
+
+## 兼容与回滚
+
+v0.3 是增量升级：
+
+- 旧页面和旧 API 保留；
+- 新表不删除 `analysis_runs`；
+- v3 有独立合同、快照、管道和路由；
+- 关闭 `ENABLE_AD_REVENUE_V3` 即可隐藏 v3 页面与 API；
+- Sites 可以切回上一个已保存版本。
+
+## 项目状态
+
+v0.3 源码、模拟数据、Skill、API、工作区、自动化审计和测试已经完成本地实现。生产发布状态以 GitHub 最新提交、Actions 和 Sites 版本为准。
 
 ## License
 

@@ -6,6 +6,7 @@ interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
   run<T = Record<string, unknown>>(): Promise<T>;
   first<T = Record<string, unknown>>(): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
 }
 
 interface D1Database {
@@ -16,6 +17,7 @@ interface D1Database {
 declare module "cloudflare:workers" {
   export const env: {
     DB?: D1Database;
+    REVENUE_WORKSPACE_ALLOWED_EMAILS?: string;
     [key: string]: unknown;
   };
 }

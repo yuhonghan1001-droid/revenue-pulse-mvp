@@ -10,8 +10,9 @@ import {
   type RevenueSkillEnv,
 } from "./revenue-skill";
 import { isAdRevenueV3Enabled } from "./v3/feature-flags";
+import { handleRevenueV3Api, type RevenueV3Env } from "./v3/api";
 
-interface Env extends RevenueSkillEnv {
+interface Env extends RevenueSkillEnv, RevenueV3Env {
   ASSETS: Fetcher;
   ENABLE_AD_REVENUE_V3?: string;
   FEISHU_APP_ID?: string;
@@ -231,6 +232,21 @@ function isAuthorized(request: Request, env: Env) {
   );
 }
 
+function isWorkspaceUserAllowed(request: Request, env: Env) {
+  const email = request.headers
+    .get("oai-authenticated-user-email")
+    ?.trim()
+    .toLowerCase();
+  if (!email) return true;
+  const allowed = new Set(
+    (env.REVENUE_WORKSPACE_ALLOWED_EMAILS ?? "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return allowed.size > 0 && allowed.has(email);
+}
+
 async function deliverToFeishu(
   origin: string,
   env: Env,
@@ -338,16 +354,28 @@ async function latestAnalysis(env: Env) {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    const v3Enabled = isAdRevenueV3Enabled(env.ENABLE_AD_REVENUE_V3);
 
-    if (url.pathname === "/api/v3/status") {
-      if (!isAdRevenueV3Enabled(env.ENABLE_AD_REVENUE_V3)) {
+    if (url.pathname.startsWith("/api/v3/")) {
+      if (!v3Enabled) {
         return new Response("Not found", { status: 404 });
       }
-      return jsonResponse({
-        ok: true,
-        version: "v3",
-        state: "scaffolded",
-      });
+      const response = await handleRevenueV3Api(request, env);
+      if (response) return response;
+    }
+
+    if ((url.pathname === "/v3" || url.pathname === "/workspace") && !v3Enabled) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    if (url.pathname === "/workspace" && !isWorkspaceUserAllowed(request, env)) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    if (url.pathname === "/" && v3Enabled) {
+      const v3Url = new URL(request.url);
+      v3Url.pathname = "/v3";
+      return handler.fetch(new Request(v3Url, request), env, ctx);
     }
 
     if (url.pathname === "/api/feishu/push") {
